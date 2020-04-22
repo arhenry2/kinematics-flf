@@ -1,0 +1,94 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+### Gets flf package loaded into environment ###
+# install.packages("backports")
+# install.packages("rcmdcheck")
+# install.packages("devtools")
+# install.packages("rowr")
+# install.packages("plotly")
+# setwd("/Users/ashleyhenry/")
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+```
+
+```{r Load-and-Combine_Res_Structure_TEST}
+# Loads desired res structure into environment
+foo <- load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_SlowFastRILs.RData")
+foo = get(foo)
+fah <- load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_Cvi_2019vsRILPop.RData")
+fah = get(fah)
+
+foofah = rbind(foo, fah)
+
+```
+
+
+```{r Load-Res-Structures}
+CviLerRILs1_10 <- load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_RILs1-10.RData")
+CviLerRILs1_10 = get(CviLerRILs1_10)
+```
+
+```{r Combine-Summary-Tables-of-Res-Structure}
+# Goal: Separate summary table & rawData from res structure to make 2 separate dataframes
+# Used Julian's code from ParameterInvestigation.Rmd, including function & for loop [below]
+## Then rbind() all created summary tables
+## TRICK: rbind() should be done in for loop... (work on this!)
+
+############## function & for loop written on 30 January 2020 w/ Julian's help #############
+####################### Taken from ParameterInvestigation.Rmd script #######################
+# Function to separate res structure and rename pathname to filename for column "fileName" #
+pathname_to_filename = function(genotype) {
+  # Get genotype name from pathname
+  genoName = basename(dirname(dirname(toString(genotype$fileName[[1]]))))
+  # Create empty matrix of one column and as many rows as there are of res structure
+  outnames = matrix(1, nrow(genotype))
+  # Loops through each row of res
+  ## Extracts pathname from each row in the dataframe
+  ## Extracts filename from each pathname
+  ## outnames = extracted filenames
+  for (i in 1:nrow(genotype)) {
+    namePlay_i  = toString(genotype$fileName[[i]])
+    outnames[i] = basename(dirname(namePlay_i))
+    print(outnames[i])
+  }
+  # Replaces pathname column with outnames column
+  ## Now the column labeled "fileName" has filename instead of pathname
+  genotype[["fileName"]] <- outnames
+  # Return genotype summary table and genotype name
+  gtype_gname = list(genotype, genoName)
+  return(gtype_gname)
+}
+
+# Create empty dataframe to fill with RIL Parameter Summary Tables
+RILParameterSummaryTable = data.frame(matrix(
+                                            ncol = 6, 
+                                            nrow = 0, 
+                                            dimnames = list(NULL, c("fileName", "x0", "vf", "k", "n", "mle"))))
+
+# For loop to call "pathname_to_filename" function for each genotype in res
+## Fills dataframe with all replicates of all RILs' parameter summary tables
+for (i in 1:length(res)) {
+  gtype = res[[i]]$summary_table
+  gList = pathname_to_filename(gtype)
+  summaryTable = gList[[1]]
+  eval(parse(text = paste0(sprintf("%s = gList[[1]]", gList[[2]]))))
+  RILParameterSummaryTable = rbind(RILParameterSummaryTable, summaryTable)
+}
+
+# Badabing badaboom, combined & saved parameter summary tables
+save(RILParameterSummaryTable, file = "RILParameterSummaryTable.RData")
+```
+
+
+

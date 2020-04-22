@@ -1,0 +1,71 @@
+---
+title: "PlotPointCloudandLine"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+# library(plyr)
+library(tidyverse)
+library(readr)
+require(reshape2)
+```
+
+
+```{r Data&plot}
+
+# Unit conversion for point cloud
+res[[1]]$rawData[[1]]$pos = res[[1]]$rawData[[1]]$pos/1463
+res[[1]]$rawData[[1]]$vel = res[[1]]$rawData[[1]]$vel*0.08202
+
+# Unit conversion for fitted flf curve
+CtrlCvi$Pos = CtrlCvi$Pos/1463
+CtrlCvi$CtrlCvi = CtrlCvi$CtrlCvi*0.08202
+
+# Plot point cloud w/ fitted line for Cvi Ctrl, replicate 1
+ggplot(data = data.frame(res[[1]]$rawData[[1]]), aes(x = pos, y = vel)) +
+  geom_point(color = "dark grey") +
+  # geom_line(data = CtrlCvi, aes(x = Pos, y = CtrlCvi), color = "blue", size = 1.5) +
+  xlab("Position from Root Tip (mm)") +
+  ylab("Velocity from Root Tip (mm/hr)") +
+  xlim(0, 1.25) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+############### Playing with data on 11.20.2019 ###############
+######## Making plot of Cvi REGR Curve for proposal ###########
+CtrlCvi = read_csv("/Users/ashleyhenry/Desktop/PosEvaluatedVel1.csv")
+
+
+CtrlCvi = CtrlCvi %>%
+  rename(
+    "Pos" = V1,
+    "CtrlCvi" = V2)
+
+ggplot(CtrlCvi, aes(x = Pos, y = CtrlCvi)) +
+  geom_point() +
+  # ylim(0, 3.5) +
+  xlab("Position from Root Tip (mm)") +
+  ylab("Velocity from Root Tip (mm/hr)") +
+  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  theme_bw()
+
+
+CviCtrlREGR = read_csv("/Users/ashleyhenry/Desktop/PosEvaluatedREGR1.csv")
+CviCtrlREGR = CviCtrlREGR %>%
+  rename(
+    "Pos" = V1,
+    "Vel" = V2)
+
+ggplot(CviCtrlREGR, aes(x = Pos, y = Vel)) +
+  geom_point(color = "blue") +
+  # geom_line(data = CtrlCvi, aes(x = Pos, y = CtrlCvi), color = "blue", size = 1.5) +
+  xlab("Position from Root Tip (mm)") +
+  ylab("Relative Elemental Growth Rate (%/hr)") +
+  xlim(0, 1.25) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+```

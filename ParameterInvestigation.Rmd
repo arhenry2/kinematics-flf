@@ -1,0 +1,340 @@
+---
+title: "Investigation of Parameters"
+author: "Ashley Henry"
+output: html_document
+date: "1/23/2020"
+---
+
+```{r Setup, include=FALSE}
+### Gets flf package loaded into environment ###
+# install.packages("backports")
+# install.packages("rcmdcheck")
+# install.packages("devtools")
+# install.packages("rowr")
+# install.packages("plotly")
+# setwd("/Users/ashleyhenry/")
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+```
+
+```{r load-data, echo=FALSE}
+### Below is copied from AnalyzeKinematicAnalysisToolOutput.Rmd
+### Creates path with folder of folders, each with one rawData.csv file
+### Loads in all of the rawData.csv files ###
+# masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
+masterPath <- "/Users/ashleyhenry/Desktop/SlowFastRILsExploration/SlowFastRILs/"
+# masterPath <- "/Users/ashleyhenry/Desktop/UnitTestMasterPath" # unit masterpath for sanity (11.19.2019)
+
+res <- processMasterFolder(masterPath)
+
+# Saves res structure (technically a "large list") to the working directory
+## Saves data in a binary file
+save(res, file = "res_SlowFastRILs.RData")
+
+```
+
+```{r Load_Res_Structure}
+# Loads desired res structure into environment
+load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_RILs1-10.RData")
+```
+
+```{r renaming-data-parameters}
+########## function & for loop written on 30 January 2020 w/ Julian's help ##########
+# Function to separate res structure and rename pathname to filename for column "fileName"
+pathname_to_filename = function(genotype) {
+  # Get genotype name from pathname
+  genoName = basename(dirname(dirname(toString(genotype$fileName[[1]]))))
+  
+  # Create empty matrix of one column and as many rows as there are of res structure
+  outnames = matrix(1, nrow(genotype))
+
+  # Loops through each row of res
+  ## Extracts pathname from each row in the dataframe
+  ## Extracts filename from each pathname
+  ## outnames = extracted filenames
+  for (i in 1:nrow(genotype)) {
+    namePlay_i  = toString(genotype$fileName[[i]])
+    outnames[i] = basename(dirname(namePlay_i))
+    print(outnames[i])
+  }
+  
+  # Replaces pathname column with outnames column
+  ## Now the column labeled "fileName" has filename instead of pathname
+  genotype[["fileName"]] <- outnames
+  
+  # Return genotype summary table and genotype name
+  gtype_gname = list(genotype, genoName)
+  return(gtype_gname)
+}
+
+# For loop to call "pathname_to_filename" function for each genotype in res
+for (i in 1 : length(res)) {
+  gtype = res[[i]]$summary_table
+  gList = pathname_to_filename(gtype)
+  eval(parse(text = paste0(sprintf("%s = gList[[1]]", gList[[2]]))))
+}
+
+fullData = rbind(Cvi, Ler, RIL1_1, RIL15_2, RIL17, RIL19, RIL4)
+write.csv(fullData, paste('/Users/ashleyhenry/Desktop/fullData.csv'), row.names=F)
+```
+
+```{r parameter-correlation}
+# Genotype carried throughout rest of plotting code:
+genotype = Col
+genotypeName = "Col"
+
+# Pearson's correlation, paired t-test
+## Gives correlation coefficient and p-value of parameters
+cor.test(genotype$vf, genotype$k, method=c("pearson"))
+cor.test(genotype$vf, genotype$n, method=c("pearson"))
+cor.test(genotype$n, genotype$k, method=c("pearson"))
+
+# Calculates linear model of parameter pairs
+## Used later to draw abline in ggplots of parameters
+intSlopeVF_K = lm(genotype$vf ~ genotype$k)
+intSlopeVF_N = lm(genotype$vf ~ genotype$n)
+intSlopeK_N = lm(genotype$k ~ genotype$n)
+
+# Plot parameter pairs
+ggplot(genotype, aes(x = genotype$k, y = genotype$vf)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter k") +
+  ylab("Parameter vf") +
+  ggtitle(paste("Parameter k and vf of", genotypeName)) +
+  theme_bw()
+
+ggplot(genotype, aes(x = genotype$n, y = genotype$vf)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeVF_N$coefficients[1], slope = intSlopeVF_N$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter vf") +
+  ggtitle(paste("Parameter n & vf of", genotypeName)) +
+  theme_bw()
+
+ggplot(genotype, aes(x = genotype$n, y = genotype$k)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeK_N$coefficients[1], slope = intSlopeK_N$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter k") +
+  ggtitle(paste("Parameter k & n of", genotypeName)) +
+  theme_bw()
+
+# Creates 3D plot of parameters
+plot_ly(x = genotype$vf, 
+        y = genotype$k, 
+        z = genotype$n, 
+        type = "scatter3d", 
+        mode = "markers", 
+        color = genotype$vf) %>%
+        layout(
+          title = "3D Plot of Parameters",
+          scene = list(
+            xaxis = list(title = "vf"),
+            yaxis = list(title = "k"),
+            zaxis = list(title = "n")))
+```
+
+```{r combo_parameter_plots-for-Col&pin2}
+# Rename Col fileNames as Col, not Day1--1.2.3...
+## Done again with pin2 dataset
+Col$fileName = "Col"
+pin2$fileName = "pin2"
+b4$fileName = "abcb4"
+abcb4pin2$fileName = "abcb4pin2"
+
+data = rbind(Col, pin2, b4, abcb4pin2)
+dataName = "Col, abcb4, abcb4pin2, & pin2"
+
+ggplot(data, aes(x = data$k, y = data$vf, color = fileName)) +
+  # geom_point(aes(group = pin2), color = "Blue") +
+  geom_point() +
+  # geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter k") +
+  ylab("Parameter vf") +
+  ggtitle(paste("Parameter k and vf of", dataName)) +
+  theme_bw()
+
+ggplot(data, aes(x = data$n, y = data$vf, color = fileName)) +
+  # geom_point(aes(group = pin2), color = "Blue") +
+  geom_point() +
+  # geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter vf") +
+  ggtitle(paste("Parameter n and vf of", dataName)) +
+  theme_bw()
+
+ggplot(data, aes(x = data$k, y = data$n, color = fileName)) +
+  # geom_point(aes(group = pin2), color = "Blue") +
+  geom_point() +
+  # geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter k") +
+  ylab("Parameter n") +
+  ggtitle(paste("Parameter k and n of", dataName)) +
+  theme_bw()
+```
+
+```{r combo_parameter_plots-for-ComparingCviDatasets}
+# Rename Col fileNames as Col, not Day1--1.2.3...
+## Done again with pin2 dataset
+Cvi_2019$fileName = "Cvi_2019"
+RILPop_Cvi$fileName = "Cvi_RILPop"
+
+data = rbind(Cvi_2019, RILPop_Cvi)
+dataName = "Cvi_2019 & Cvi_RILPop"
+
+ggplot(data, aes(x = data$k, y = data$vf, color = fileName)) +
+  # geom_point(aes(group = pin2), color = "Blue") +
+  geom_point() +
+  # geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter k") +
+  ylab("Parameter vf") +
+  ggtitle(paste("Parameter k and vf of", dataName)) +
+  theme_bw()
+
+ggplot(data, aes(x = data$n, y = data$vf, color = fileName)) +
+  # geom_point(aes(group = pin2), color = "Blue") +
+  geom_point() +
+  # geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter vf") +
+  ggtitle(paste("Parameter n and vf of", dataName)) +
+  theme_bw()
+
+ggplot(data, aes(x = data$k, y = data$n, color = fileName)) +
+  # geom_point(aes(group = pin2), color = "Blue") +
+  geom_point() +
+  # geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter k") +
+  ylab("Parameter n") +
+  ggtitle(paste("Parameter k and n of", dataName)) +
+  theme_bw()
+```
+
+
+```{r single_parameter_investigation}
+# Melts data to have 3 columns: fileName (replicate), variable (parameter), and value
+parametersMelted = melt(pin2, id.var = "fileName")
+
+# Boxplots for all parameters for condition/genotype
+ggplot(data = parametersMelted, aes(x = variable, y = value)) + 
+  geom_boxplot(aes(fill = variable)) +
+  ylab("") +
+  xlab("Parameters") +
+  ggtitle("Distribution of Parameters") +
+  theme_bw() +
+  facet_wrap( ~ variable, scales = "free")
+```
+
+
+```{r OLD-WAY_Plotting_parameters}
+########## Old way of naming res structure parts ##########
+# Loads desired res structure into environment
+load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_SmallerSampleTEMP.RData")
+# Gather parameter values for Cvi & Ler
+parameters_CtrlCvi = res[[1]]$summary_table
+parameters_CtrlLer = res[[2]]$summary_table
+parameters_RIL1 = res[[3]]$summary_table
+parameters_RIL15 = res[[4]]$summary_table
+parameters_RIL17 = res[[5]]$summary_table
+parameters_RIL19 = res[[6]]$summary_table
+parameters_RIL4 = res[[7]]$summary_table
+
+#Combine parents' res summary table data
+parameters_CviLer = rbind(parameters_CtrlCvi, parameters_CtrlLer)
+# Combine res summary table data for all genotypes
+parameters_total = rbind(parameters_CtrlCvi, parameters_CtrlLer, parameters_RIL1, parameters_RIL15, parameters_RIL17, parameters_RIL19, parameters_RIL4)
+
+# Linear regression of plots above for Cvi:
+## Use intercept and slope from these to create geom_abline in plots below
+intSlopeVF_K = lm(parameters_CtrlCvi$vf ~ parameters_CtrlCvi$k)
+intSlopeVF_N = lm(parameters_CtrlCvi$vf ~ parameters_CtrlCvi$n)
+intSlopeK_N = lm(parameters_CtrlCvi$k ~ parameters_CtrlCvi$n)
+
+chisq.test(parameters_CtrlCvi$vf, parameters_CtrlCvi$k)
+
+# Linear regression of plots above for all loaded genotypes:
+## Use intercept and slope from these to create geom_abline in plots below
+intSlopeVF_K = lm(parameters_RIL1$vf ~ parameters_RIL1$k)
+intSlopeVF_N = lm(parameters_RIL1$vf ~ parameters_RIL1$n)
+intSlopeK_N = lm(parameters_RIL1$k ~ parameters_RIL1$n)
+
+chisq.test(parameters_RIL1$vf, parameters_RIL1$k)
+
+# 3D plot of all parameters for Cvi on the same plot
+## The points fall along a single plane
+plot_ly(x = parameters_CtrlCvi$vf, 
+        y = parameters_CtrlCvi$k, 
+        z = parameters_CtrlCvi$n, 
+        type = "scatter3d", 
+        mode = "markers", 
+        color = parameters_CtrlCvi$vf)
+
+# 3D plot of parameters for all loaded genotypes
+plot_ly(x = parameters_total$vf, 
+        y = parameters_total$k, 
+        z = parameters_total$n, 
+        type = "scatter3d", 
+        mode = "markers", 
+        color = parameters_total$vf)
+
+# Plot parameters for one genotype
+ggplot(parameters_RIL1, aes(x = parameters_RIL1$k, y = parameters_RIL1$vf)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter k") +
+  ylab("Parameter vf") +
+  ggtitle("Parameter k & vf of RIL1") +
+  theme_bw()
+
+ggplot(parameters_RIL1, aes(x = parameters_RIL1$n, y = parameters_RIL1$vf)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeVF_N$coefficients[1], slope = intSlopeVF_N$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter vf") +
+  ggtitle("Parameter n & vf of RIL1") +
+  theme_bw()
+
+ggplot(parameters_RIL1, aes(x = parameters_RIL1$n, y = parameters_RIL1$k)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeK_N$coefficients[1], slope = intSlopeK_N$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter k") +
+  ggtitle("Parameter k & n of RIL1") +
+  theme_bw()
+
+# Plot parameters separately for all loaded genotypes
+# Plot parameters
+ggplot(parameters_total, aes(x = parameters_total$k, y = parameters_total$vf)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeVF_K$coefficients[1], slope = intSlopeVF_K$coefficients[2]) +
+  xlab("Parameter k") +
+  ylab("Parameter vf") +
+  ggtitle("Parameter k & vf for Cvi, Ler RIL 1, 4, 15, 17, & 19") +
+  theme_bw()
+
+ggplot(parameters_total, aes(x = parameters_total$n, y = parameters_total$vf)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeVF_N$coefficients[1], slope = intSlopeVF_N$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter vf") +
+  ggtitle("Parameter n & vf for Cvi, Ler RIL 1, 4, 15, 17, & 19") +
+  theme_bw()
+
+ggplot(parameters_total, aes(x = parameters_total$n, y = parameters_total$k)) +
+  geom_point() +
+  geom_abline(intercept = intSlopeK_N$coefficients[1], slope = intSlopeK_N$coefficients[2]) +
+  xlab("Parameter n") +
+  ylab("Parameter k") +
+  ggtitle("Parameter n & k for Cvi, Ler RIL 1, 4, 15, 17, & 19") +
+  theme_bw()
+
+
+```

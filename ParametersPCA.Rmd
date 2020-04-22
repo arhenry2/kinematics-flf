@@ -1,0 +1,184 @@
+---
+title: "ParameterPCA"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr) # Need this package to obtain mtcars dataset
+library(devtools)
+# install_github("vqv/ggbiplot")
+library(ggbiplot)
+```
+
+```{r data-prep}
+# Load saved res structure into environment
+load("~/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_2019.RData")
+
+########## for loop written on 30 January 2020 w/ Julian's help ##########
+# Function to separate res structure and rename pathname to filename for column "fileName"
+pathname_to_filename = function(genotype) {
+  # Get genotype name from pathname
+  genoName = basename(dirname(dirname(toString(genotype$fileName[[1]]))))
+  
+  # Create empty matrix of one column and as many rows as there are of the res structure
+  outnames = matrix(1, nrow(genotype))
+
+  # Loops through each row of res
+  ## Extracts pathname from each row in the dataframe
+  ## Extracts filename from each pathname
+  ## outnames = extracted filenames
+  for (i in 1:nrow(genotype)) {
+    namePlay_i  = toString(genotype$fileName[[i]])
+    outnames[i] = basename(dirname(namePlay_i))
+    print(outnames[i])
+  }
+  
+  # Replaces pathname column with outnames column
+  ## Now the column labeled "fileName" has filename instead of pathname
+  genotype[["fileName"]] <- outnames
+  
+  # Return genotype summary table and genotype name
+  gtype_gname = list(genotype, genoName)
+  return(gtype_gname)
+}
+
+
+# For loop to call "pathname_to_filename" function for each genotype in res
+for (i in 1 : length(res)) {
+  gtype = res[[i]]$summary_table
+  gList = pathname_to_filename(gtype)
+  eval(parse(text = paste0(sprintf("%s = gList[[1]]", gList[[2]]))))
+}
+
+# ########## Ye olde way ##########
+# ####### Done on 1.28.2020 #######
+# 
+# genotype = Cvi_2019
+# 
+# # Desired dataframe, but has pathname instead of just filename for replicate ID
+# Cvi_2019 = res[[1]]$summary_table
+# 
+# # Create empty matrix of one column and as many rows as there are of the original dataframe
+# outnames = matrix(1, nrow(Cvi_2019))
+# 
+# # Loops through each row of the chosen dataframe
+# ## Extracts pathname from each row in the dataframe
+# ## Extracts filename from each pathname
+# ## outnames = extracted filenames
+# for (i in 1:nrow(Cvi_2019)) {
+#   namePlay_i  = toString(Cvi_2019$fileName[[i]])
+#   outnames[i] = basename(dirname(namePlay_i))
+#   print(outnames[i])
+# }
+# # Replaces pathname column with outnames column
+# ## Now the column labeled "fileName" has filename instead of pathname
+# Cvi_2019[["fileName"]] <- outnames
+
+```
+
+
+
+```{r PCA-on-CvifromRILPop}
+genotype = Cvi_2019
+
+Cvi_2019_PCA = Cvi_2019
+
+summary(Cvi_2019_PCA)
+mean_vf = summary
+
+# Mean of vf from > summary_mean[[4,3]]
+# Mean of k from > summary_mean[[4,4]]
+# Mean of n from > summary_mean[[4,5]]
+summary_mean = summary(Cvi_2019_PCA)
+
+means_matrix = matrix(, ncol = 4, nrow = 1)
+means_list = c(summary_mean[[4,3]], summary_mean[[4,4]], summary_mean[[4,5]])
+
+
+
+plot_ly(x = genotype$vf, 
+        y = genotype$k, 
+        z = genotype$n, 
+        type = "scatter3d", 
+        mode = "markers") %>%
+        # color = genotype$vf) %>%
+        layout(
+          title = "3D Plot of Parameters",
+          scene = list(
+            xaxis = list(title = "vf"),
+            yaxis = list(title = "k"),
+            zaxis = list(title = "n")))
+
+# prcomp() = function that calcualtes PCA of the data
+## ,c(2:6) only takes columns with numerical data, leaving out the "fileName" column
+Cvi_2019_pca <- prcomp(Cvi_2019[,c(3:5)], center = TRUE, scale. = TRUE)
+
+# Summary of PCA results
+summary(Cvi_2019_pca)
+# Closer look at PCA object that gives:
+## center point (~mean) ($center), scaling ($scale), st. dev (sdev)
+## relationship (correlation or anticorrelation, etc) between the initial variables and the principal components ($rotation)
+## values of each sample in terms of the principal components ($x)
+str(Cvi_2019_pca)
+
+# Plot PCA1 vs PCA2
+ggbiplot(Cvi_2019_pca, labels = rownames(Cvi_2019$fileName))
+
+variable = Cvi_2019_pca$rotation[,1]
+b1 = variable[2:3]
+1 = b1 * (b1[1]^2 + b1[1]^2)^-.5
+# Note:
+## ^ w/ p = seq(-5,5) & b1 = means of k & n
+p%*% t(b1)
+
+# d = means of k and mean of n
+# p = seq(-1.6,1.6, length = 10) (seq of 11 numbers from -1.6 to 1.6)
+# b1 = means of k & n (separately)
+# n = matrix of 1s (matches size of p)
+p%*% t(b1) + n%*%d
+
+
+n_k_plot = p%*% t(b1) + n%*%d
+
+```
+
+
+```{r PCA-on-allCviImaged}
+load("~/Desktop/Research/Kinematics/RCodeForExperiments/res_2019CviLer.RData")
+
+# Desired dataframe, but has pathname instead of just filename for replicate ID
+Cvi_2019 = res[[1]]$summary_table
+
+# Create empty matrix of one column and as many rows as there are of the original dataframe
+outnames = matrix(1, nrow(Cvi_2019))
+
+# Loops through each row of the chosen dataframe
+## Extracts pathname from each row in the dataframe
+## Extracts filename from each pathname
+## outnames = extracted filenames
+for (i in 1:nrow(Cvi_001)) {
+  namePlay_i  = toString(Cvi_001$fileName[[i]])
+  outnames[i] = basename(dirname(namePlay_i))
+  print(outnames[i])
+}
+# Replaces pathname column with outnames column
+## Now the column labeled "fileName" has filename instead of pathname
+Cvi_001[["fileName"]] <- outnames
+
+
+# prcomp() = function that calcualtes PCA of the data
+## ,c(2:6) only takes columns with numerical data, leaving out the "fileName" column
+Cvi_001_pca <- prcomp(Cvi_001[,c(3:5)], center = TRUE, scale. = TRUE)
+
+# Summary of PCA results
+summary(Cvi_001_pca)
+# Closer look at PCA object that gives:
+## center point (~mean) ($center), scaling ($scale), st. dev (sdev)
+## relationship (correlation or anticorrelation, etc) between the initial variables and the principal components ($rotation)
+## values of each sample in terms of the principal components ($x)
+str(Cvi_001_pca)
+
+# Plot PCA1 vs PCA2
+ggbiplot(Cvi_001_pca, labels = rownames(Cvi_001$fileName))
+
+```

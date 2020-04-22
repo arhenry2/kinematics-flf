@@ -1,0 +1,28 @@
+---
+title: "RIL Set Analysis Script"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# Script to Analyze RIL Set
+__Note:__ This list is unordered as of 4.9.2020, but will make ordered list to create this script
+
+## Objectives of this script:
+* Outlier testing
+* Parameter statistics
+* REGR curves
+* Velocity curves
+* Goodness of fit for flf curve
+* 
+
+
+```{r NAME}
+
+
+
+
+```
