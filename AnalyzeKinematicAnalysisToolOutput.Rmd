@@ -1,0 +1,617 @@
+---
+title: "Analyze Kinematic Analysis Tool Output"
+author: "Ashley Henry"
+date: "6/17/2019"
+output: pdf
+---
+
+```{r setup, include=FALSE}
+### Gets flf package loaded into environment ###
+# install.packages("backports")
+# install.packages("rcmdcheck")
+# install.packages("devtools")
+# install.packages("rowr")
+# install.packages("plotly")
+# setwd("/Users/ashleyhenry/")
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+# library(plyr)
+```
+
+
+```{r load-data, echo=FALSE}
+### Creates path with folder of folders, each with one rawData.csv file
+### Loads in all of the rawData.csv files ###
+masterPath <- "/Users/ashleyhenry/Box/Henry_Ashley/Shared Kinematics/Elisabeth_CompleteData/Col&Mutants"
+
+res <- processMasterFolder(masterPath)
+
+### Creates numeric vector for means of the parameters ###
+### Makes range of y from 0.0 to 3.5 px/hr ###
+### pos values range from 0-2000 px from QC, increasing by 1 px at a time ###
+ku         <- vector('numeric')
+range_of_y <- range(0, 3.5)
+pos        <- seq(0, 2000, 1)
+```
+
+```{r save-res-structure}
+# Saves res structure (technically a "large list") to the working directory
+## Saves data in a binary file
+save(res, file = "res_RILs161-162.RData")
+# Loads res into environment
+load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_Elisabeth_Col-IAAMutants.RData")
+```
+
+```{r parameters-summary}
+### Loops through rawData.csv files from "res", calculates
+#     mean parameters (x0, vf, k, n) for all rawData files 
+#     Different genotypes separated by output file
+#     (ex. 1 = 1st genotype/condition given)
+#     "write.csv" saves parameters for each genotype in separate csv file
+for (c in 1:length(res)){
+  out <- plot_flfDataStructure(res[[c]], pos)
+  # write.csv(out, paste('/Users/ashleyhenry/Desktop/ParameterSummaryandRawData_', as.numeric(c), '.csv', sep=""), row.names=F)
+}
+
+# generate vel curve for Ctrl Cvi & Cvi IAA
+parameters_b4pin2 = res[[1]]$summary_table
+parameters_b4 = res[[2]]$summary_table
+parameters_Col = res[[3]]$summary_table
+parameters_pin2 = res[[4]]$summary_table
+
+t.test(parameters_CtrlCvi$vf, parameters_IAACvi$vf, alternative = c("two.sided"), paired = FALSE)
+t.test(log(parameters_CtrlCvi$k), log(parameters_IAACvi$k), alternative = c("two.sided"), paired = FALSE)
+t.test(log(parameters_CtrlCvi$n), log(parameters_IAACvi$n), alternative = c("two.sided"), paired = FALSE)
+
+t.test(parameters_CtrlLer$vf, parameters_IAALer$vf, alternative = c("two.sided"), paired = FALSE)
+t.test(log(parameters_CtrlLer$k), log(parameters_IAALer$k), alternative = c("two.sided"), paired = FALSE)
+t.test(log(parameters_CtrlLer$n), log(parameters_IAALer$n), alternative = c("two.sided"), paired = FALSE)
+
+# Melt data and get boxplots on same grid for all parameters
+# MANUALLY CHANGE FOR CONDITION/GENOTYPE YOU NEED TO INVESTIGATE
+parameters = res[[4]]$summary_table # same as above, makes variable to save parameter summary table
+
+# parameters = res[[2]]$summary_table # Ler (Cvi above ^ )
+# parameters = res[[3]]$summary_table # RIL1
+# parameters = res[[4]]$summary_table # RIL2
+# parameters = res[[5]]$summary_table # RIL3
+# parameters = res[[6]]$summary_table # RIL4
+
+# Melts "parameters" data to have 3 columns: fileName (replicate), variable (parameter), and value
+parametersMelted = melt(parameters, id.var = "fileName")
+
+# Boxplots for all parameters for condition/genotype
+ggplot(data = parametersMelted, aes(x = variable, y = value)) + 
+  geom_boxplot(aes(fill = variable)) +
+  ylab("") +
+  xlab("Parameters") +
+  ggtitle("Distribution of Parameters") +
+  theme_bw() +
+  facet_wrap( ~ variable, scales = "free")
+
+# addition on 11.19.2019, plot rawData.csv (pos&vel), overplot w/ fitted vel line
+ggplot(data = data.frame(res[[1]]$rawData[[1]]), aes(x = pos, y = vel)) +
+  geom_point() +
+  ggtitle(res[[1]]$rawData[[1]]$fileName) #+
+  # ylim(0, 3) +
+  # xlim(0, 2000)
+
+ggplot(data = data.frame(res[[4]]$rawData[[18]]), aes(x = pos, y = vel)) +
+  geom_point() +
+  ggtitle(res[[4]]$rawData[[18]]$fileName) #+
+  # ylim(0, 3) +
+  # xlim(0, 2000)
+
+# Density Plots for each Parameter:
+vfDist = ggplot(parameters, aes(x = vf)) +
+  geom_density() +
+  ggtitle("Cvi vf Density Plot")
+
+kDist = ggplot(parameters, aes(x = k)) +
+  geom_density() +
+  ggtitle("Cvi k Density Plot")
+
+nDist = ggplot(parameters, aes(x = n)) +
+  geom_density() +
+  ggtitle("Cvi n Density Plot")
+```
+
+```{r whatTheHellHappenedThisDay}
+# Average Parameters for Ctrl Cvi
+avgX0CtrlCvi = mean(parameters_CtrlCvi$x0) # 708.1485
+avgVFCtrlCvi = mean(parameters_CtrlCvi$vf) # 3.090851
+avgKCtrlCvi = mean(parameters_CtrlCvi$k) # 0.006933604
+avgNCtrlCvi = mean(parameters_CtrlCvi$n) # 1.109034
+
+# Average Parameters for Ctrl Cvi PLUS SD
+avgX0CtrlCviPlusSD = mean(parameters_CtrlCvi$x0) + sd(parameters_CtrlCvi$x0) 
+avgVFCtrlCviPlusSD = mean(parameters_CtrlCvi$vf) + sd(parameters_CtrlCvi$vf) 
+avgKCtrlCviPlusSD = mean(parameters_CtrlCvi$k) + sd(parameters_CtrlCvi$k) 
+avgNCtrlCviPlusSD = mean(parameters_CtrlCvi$n) + sd(parameters_CtrlCvi$n) 
+
+# Average Parameters for Ctrl Cvi MINUS SD
+avgX0CtrlCviMinusSD = mean(parameters_CtrlCvi$x0) - sd(parameters_CtrlCvi$x0) 
+avgVFCtrlCviMinusSD = mean(parameters_CtrlCvi$vf) - sd(parameters_CtrlCvi$vf) 
+avgKCtrlCviMinusSD = mean(parameters_CtrlCvi$k) - sd(parameters_CtrlCvi$k) 
+avgNCtrlCviMinusSD = mean(parameters_CtrlCvi$n) - sd(parameters_CtrlCvi$n) 
+
+x = seq(0, 2000)
+
+avgCtrlCviVelProfile = flf(x, avgX0CtrlCvi, avgVFCtrlCvi, avgKCtrlCvi, avgNCtrlCvi)
+avgCtrlCviVelProfilePlusSD = flf(x, avgX0CtrlCviPlusSD, avgVFCtrlCviPlusSD, avgKCtrlCviPlusSD, avgNCtrlCviPlusSD)
+avgCtrlCviVelProfileMinusSD = flf(x, avgX0CtrlCviMinusSD, avgVFCtrlCviMinusSD, avgKCtrlCviMinusSD, avgNCtrlCviMinusSD)
+
+CtrlCviwithSD = cbind(x, avgCtrlCviVelProfile, avgCtrlCviVelProfilePlusSD, avgCtrlCviVelProfileMinusSD)
+
+plot(x, avgCtrlCviVelProfile)
+
+
+write.csv(CtrlCviwithSD, paste('/Users/ashleyhenry/Desktop/CtrlCviwithandwithoutSD.csv', sep=""), row.names=F)
+
+#######################################
+########## AGAIN FOR IAA CVI ##########
+#######################################
+# Average Parameters for IAA Cvi
+avgX0IAACvi = mean(parameters_IAACvi$x0) # 708.1485
+avgVFIAACvi = mean(parameters_IAACvi$vf) # 3.090851
+avgKIAACvi = mean(parameters_IAACvi$k) # 0.006933604
+avgNIAACvi = mean(parameters_IAACvi$n) # 1.109034
+
+# Average Parameters for IAA Cvi PLUS SD
+avgX0IAACviPlusSD = mean(parameters_IAACvi$x0) + sd(parameters_IAACvi$x0) 
+avgVFIAACviPlusSD = mean(parameters_IAACvi$vf) + sd(parameters_IAACvi$vf) 
+avgKIAACviPlusSD = mean(parameters_IAACvi$k) + sd(parameters_IAACvi$k) 
+avgNIAACviPlusSD = mean(parameters_IAACvi$n) + sd(parameters_IAACvi$n) 
+
+# Average Parameters for IAA Cvi MINUS SD
+avgX0IAACviMinusSD = mean(parameters_IAACvi$x0) - sd(parameters_IAACvi$x0) 
+avgVFIAACviMinusSD = mean(parameters_IAACvi$vf) - sd(parameters_IAACvi$vf) 
+avgKIAACviMinusSD = mean(parameters_IAACvi$k) - sd(parameters_IAACvi$k) 
+avgNIAACviMinusSD = mean(parameters_IAACvi$n) - sd(parameters_IAACvi$n) 
+
+IAACviwithSD = cbind(x, avgCtrlCviVelProfile, avgCtrlCviVelProfilePlusSD, avgCtrlCviVelProfileMinusSD)
+
+plot(x, avgCtrlCviVelProfile)
+
+
+write.csv(CtrlCviwithSD, paste('/Users/ashleyhenry/Desktop/CtrlCviwithandwithoutSD.csv', sep=""), row.names=F)
+
+########## AGAIN FOR STANDARD ERROR ##########
+# standard error = sd/sqrt(n)
+# Standard errors for Parameters  
+stderrorParameterx0 = sd(parameters_IAACvi$x0)/sqrt(36)
+stderrorParametervf = sd(parameters_IAACvi$vf)/sqrt(36)
+stderrorParameterk = sd(parameters_IAACvi$k)/sqrt(36)
+stderrorParametern = sd(parameters_IAACvi$n)/sqrt(36)
+
+avgX0IAACvi = mean(parameters_IAACvi$x0)
+avgVFIAACvi = mean(parameters_IAACvi$vf)
+avgKIAACvi = mean(parameters_IAACvi$k)
+avgNIAACvi = mean(parameters_IAACvi$n)
+
+avgX0IAACviPlusSD = avgX0IAACvi + stderrorParameterx0
+avgVFIAACviPlusSD = avgVFIAACvi + stderrorParametervf
+avgKIAACviPlusSD = avgKIAACvi + stderrorParameterk
+avgNIAACviPlusSD = avgNIAACvi + stderrorParametern
+
+avgX0IAACviMinusSD = avgX0IAACvi - stderrorParameterx0
+avgVFIAACviMinusSD = avgVFIAACvi - stderrorParametervf
+avgKIAACviMinusSD = avgKIAACvi - stderrorParameterk
+avgNIAACviMinusSD = avgNIAACvi - stderrorParametern
+
+x = seq(0, 2000)
+
+avgIAACviVelProfile = flf(x, avgX0IAACvi, avgVFIAACvi, avgKIAACvi, avgNIAACvi)
+avgIAACviVelProfilePlusSD = flf(x, avgX0IAACviPlusSD, avgVFIAACviPlusSD, avgKIAACviPlusSD, avgNIAACviPlusSD)
+avgIAACviVelProfileMinusSD = flf(x, avgX0IAACviMinusSD, avgVFIAACviMinusSD, avgKIAACviMinusSD, avgNIAACviMinusSD)
+
+IAACviwithSD = cbind(x, avgIAACviVelProfile, avgIAACviVelProfilePlusSD, avgIAACviVelProfileMinusSD)
+
+plot(x, avgCtrlCviVelProfile)
+
+write.csv(IAACviwithSD, paste('/Users/ashleyhenry/Desktop/IAACviwithandwithoutSD.csv', sep=""), row.names=F)
+```
+
+
+```{r EvaluateVelandREGRFits}
+
+# Loops through all genotypes/conditions evaluating the equation at a 
+## value, Pos (fixed position values (0-2000, increments of 1)), to 
+## calculate velocity and REGR values using the maximum likelihood 
+## estimate parameters for each replicate
+# WARNING: Fits ALL replicates, not the average. To fit the avg vel, 
+## look to the next code chunk
+# Please Note: The final product has the correct units (hallelujah!)
+
+for (i in 1:length(res)) {
+  resultVel <- evaluateVelFits(res[[i]], pos)
+  matrixEnd = ncol(resultVel) - 1
+  for (j in 2:matrixEnd) {
+    resultVel[,j] <- as.numeric(resultVel[,j]) * 0.08202 } # conversion from px/frame to mm/hr for all velocity value columns
+  resultVel[,1] = as.numeric(resultVel[,1]) / 1463 # conversion from px to mm for the one position value column
+  write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosEvaluatedVel', as.numeric(i), '.csv', sep = ""), row.names = F)
+  plot(resultVel[,1], resultVel[,2])
+  
+  ######################################
+  
+  resultREGR <- evaluateREGRFits(res[[i]], pos, 120*100)
+  matrixEnd = ncol(resultREGR) - 1
+  
+  # for (k in 2:matrixEnd) {
+    # resultREGR[,j] <- as.numeric(resultREGR[,j]) * 120} # DOESN'T WORK: conversion from px/frame*frame to px/frame*hr (or %/hr) for all velocity value columns
+  
+  resultREGR[,1] = as.numeric(resultREGR[,1]) / 1463 # WORKS: conversion from px to mm for the one position value column
+  write.csv(resultREGR, paste('/Users/ashleyhenry/Desktop/PosEvaluatedREGR', as.numeric(i), '.csv', sep = ""), row.names = F)
+  plot(resultREGR[,1], resultREGR[,2])
+}
+```
+
+```{r plot-above-curves}
+Cvi = read_csv("/Users/ashleyhenry/Desktop/PosEvaluatedREGR1.csv")
+Ler = read_csv("/Users/ashleyhenry/Desktop/PosEvaluatedREGR2.csv")
+
+Cvi = Cvi %>%
+  rename(
+    "Pos" = V1,
+    # "Cvi_1" = V2 # Make for loop to label the replicate!
+  )
+
+Ler = Ler %>%
+  rename(
+    "Pos" = V1,
+    # "Ler_1" = V2 # Make for loop to label the replicate!
+  )
+
+# Add dataset by dataset to make full dataset of Cvi & Ler for 2018 & 2019
+CviLer = merge(Cvi,
+               Ler,
+               by = "Pos")
+
+# Make merged dataset into long format
+CviLongFormat = melt(Cvi, id.var = "Pos")
+LerLongFormat = melt(Ler, id.var = "Pos")
+
+# Graph genotype replicate data separately to see variance in genotype (do this for as many genotypes as you have, eventually do for loop)
+ggplot(CviLongFormat, aes(x = Pos, y = value, color = variable)) +
+  geom_point() +
+  # ylim(0, 3.5) +
+  xlab("Position from Root Tip (mm)") +
+  ylab("Velocity from Root Tip (mm/hr)") +
+  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  theme_bw()
+
+ggplot(LerLongFormat, aes(x = Pos, y = value, color = variable)) +
+  geom_point() +
+  # ylim(0, 3.5) +
+  xlab("Position from Root Tip (mm)") +
+  ylab("Velocity from Root Tip (mm/hr)") +
+  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  theme_bw()
+
+```
+
+```{r fitVelFromAvgParameters}
+# MANUALLY CHANGE FOR CONDITION/GENOTYPE YOU NEED TO INVESTIGATE
+
+# Note for EC's work: 
+# 1 = b4pin2; 2 = b4; 3 = Col; 4 = pin2
+parameters = res[[4]]$summary_table
+
+# parameters = res[[2]]$summary_table
+# parameters = res[[3]]$summary_table
+# parameters = res[[4]]$summary_table
+# parameters = res[[5]]$summary_table
+# parameters = res[[6]]$summary_table
+
+# Averages the parameters, then fit velocty values to that pos and avg parameters
+## Table that gives avg and sd for each paramters in that condition/genotype
+parameter_summary = parameters %>%
+  summarize(avg_x0 = mean(parameters$x0),
+            sd_x0 = sd(parameters$x0),
+            avg_vf = mean(parameters$vf),
+            sd_vf = sd(parameters$vf),
+            avg_k = mean(parameters$k),
+            sd_k = sd(parameters$k),
+            avg_n = mean(parameters$n),
+            sd_n = sd(parameters$n))
+
+# Matrix that has position values in 1st column and fitted velocity values in 2nd column
+avgVelCurve <- matrix(nrow = length(pos), ncol = 2)
+avgVelCurve[,1] <- pos
+avgVelCurve[,2] <- flf(pos, parameter_summary$avg_x0, parameter_summary$avg_vf, parameter_summary$avg_k, parameter_summary$avg_n)
+
+write.csv(avgVelCurve, paste('/Users/ashleyhenry/Desktop/avgVelCurve_pin2.csv'), row.names = F)
+
+```
+
+```{r plotVelCurves}
+abcb4pin2 = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_abcb4pin2.csv")
+abcb4 = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_abcb4.csv")
+Col = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_Col.csv")
+pin2 = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_pin2.csv")
+
+abcb4pin2 = abcb4pin2 %>%
+  rename(
+    "Pos" = V1,
+    "abcb4pin2" = V2
+  )
+
+abcb4 = abcb4 %>%
+  rename(
+    "Pos" = V1,
+    "abcb4" = V2
+  )
+
+Col = Col %>%
+  rename(
+    "Pos" = V1,
+    "Col" = V2
+  )
+
+pin2 = pin2 %>%
+  rename(
+    "Pos" = V1,
+    "pin2" = V2
+  )
+
+# Change units from px/frame -> mm/hr
+abcb4pin2$Pos = abcb4pin2$Pos/1463
+abcb4pin2$abcb4pin2 = abcb4pin2$abcb4pin2*0.08202
+
+abcb4$Pos = abcb4$Pos/1463
+abcb4$abcb4 = abcb4$abcb4*0.08202
+
+Col$Pos = Col$Pos/1463
+Col$Col = Col$Col*0.08202
+
+pin2$Pos = pin2$Pos/1463
+pin2$pin2 = pin2$pin2*0.08202
+
+# Save new file with correct units (mm & mm/hr) (!!!)
+write.csv(abcb4pin2, paste('/Users/ashleyhenry/Desktop/avgVelCurve_abcb4pin2_CORRECTUNITS.csv'), row.names = F)
+write.csv(abcb4, paste('/Users/ashleyhenry/Desktop/avgVelCurve_abcb4_CORRECTUNITS.csv'), row.names = F)
+write.csv(Col, paste('/Users/ashleyhenry/Desktop/avgVelCurve_Col_CORRECTUNITS.csv'), row.names = F)
+write.csv(pin2, paste('/Users/ashleyhenry/Desktop/avgVelCurve_pin2_CORRECTUNITS.csv'), row.names = F)
+
+# Add dataset by dataset to make full dataset of Cvi & Ler for 2018 & 2019
+abcb4pin2Abcb4 = merge(abcb4pin2,
+               abcb4,
+               by = "Pos")
+
+abcb4pin2Abcb4Col = merge(Col,
+               abcb4pin2Abcb4,
+               by = "Pos")
+
+abcb4pin2Abcb4Colpin2 =  merge(pin2,
+               abcb4pin2Abcb4Col,
+               by = "Pos") 
+  
+# Make merged dataset into long format
+# CviLerRIL1234LongFormat = melt(CviLerRIL1234, id.var = "Pos")
+abcb4pin2Abcb4Colpin2LongFormat = melt(abcb4pin2Abcb4Colpin2, id.var = "Pos")
+
+# Graph 2018, 2019 CviLer_longformat data
+ggplot(abcb4pin2Abcb4Colpin2LongFormat, aes(x = Pos, y = value, color = variable)) +
+  geom_point() +
+  # ylim(0, 3.5) +
+  xlab("Position from Quiescent Center (mm)") +
+  ylab("Velocity from Root Tip (mm/hr)") +
+  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  theme_bw()
+```
+
+```{r fitREGRFromAvgParameter}
+  
+# MANUALLY CHANGE FOR CONDITION/GENOTYPE YOU NEED TO INVESTIGATE
+# Note: 
+# 1 = b4; 2 = Col; 3 = pin2; 4 = b4pin2
+parameters = res[[4]]$summary_table
+# parameters = res[[2]]$summary_table
+# parameters = res[[3]]$summary_table
+# parameters = res[[4]]$summary_table
+# parameters = res[[5]]$summary_table
+# parameters = res[[6]]$summary_table
+
+# Averages the parameters, then fit velocty values to that pos and avg parameters
+## Table that gives avg and sd for each paramters in that condition/genotype
+parameter_summary = parameters %>%
+  summarize(avg_x0 = mean(parameters$x0),
+            sd_x0 = sd(parameters$x0),
+            avg_vf = mean(parameters$vf),
+            sd_vf = sd(parameters$vf),
+            avg_k = mean(parameters$k),
+            sd_k = sd(parameters$k),
+            avg_n = mean(parameters$n),
+            sd_n = sd(parameters$n))
+
+# Matrix that has position values in 1st column and fitted velocity values in 2nd column
+avgREGRCurve <- matrix(nrow = length(pos), ncol = 2)
+avgREGRCurve[,1] <- pos
+avgREGRCurve[,2] <- REGR(pos, parameter_summary$avg_x0, parameter_summary$avg_vf, parameter_summary$avg_k, parameter_summary$avg_n, 12000)
+
+write.csv(avgREGRCurve, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_pin2.csv'), row.names = F)
+
+```
+
+```{r plottingPracticeREGRCurves}
+abcb4pin2 = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_abcb4pin2.csv")
+abcb4 = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_abcb4.csv")
+Col = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_Col.csv")
+pin2 = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_pin2.csv")
+
+abcb4pin2 = abcb4pin2 %>%
+  rename(
+    "Pos" = V1,
+    "abcb4pin2" = V2
+  )
+
+abcb4 = abcb4 %>%
+  rename(
+    "Pos" = V1,
+    "abcb4" = V2
+  )
+
+Col = Col %>%
+  rename(
+    "Pos" = V1,
+    "Col" = V2
+  )
+
+pin2 = pin2 %>%
+  rename(
+    "Pos" = V1,
+    "pin2" = V2
+  )
+
+# Change units from px/frame -> mm/hr
+abcb4pin2$Pos = abcb4pin2$Pos/1463
+# abcb4pin2$abcb4pin2 = abcb4pin2$abcb4pin2*0.08202
+
+abcb4$Pos = abcb4$Pos/1463
+# abcb4$abcb4 = abcb4$abcb4*0.08202
+
+Col$Pos = Col$Pos/1463
+# Col$Col = Col$Col*0.08202
+
+pin2$Pos = pin2$Pos/1463
+# pin2$pin2 = pin2$pin2*0.08202
+
+# Saves data now with correct units of mm and %/hr (!!!)
+write.csv(abcb4pin2, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_abcb4pin2_CORRECTUNITS.csv'), row.names = F)
+write.csv(abcb4, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_abcb4_CORRECTUNITS.csv'), row.names = F)
+write.csv(Col, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_Col_CORRECTUNITS.csv'), row.names = F)
+write.csv(pin2, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_pin2_CORRECTUNITS.csv'), row.names = F)
+
+# Add dataset by dataset to make full dataset of Cvi & Ler for 2018 & 2019
+abcb4pin2Abcb4 = merge(abcb4pin2,
+               abcb4,
+               by = "Pos")
+
+abcb4pin2Abcb4Col = merge(Col,
+               abcb4pin2Abcb4,
+               by = "Pos")
+
+abcb4pin2Abcb4Colpin2 =  merge(pin2,
+               abcb4pin2Abcb4Col,
+               by = "Pos") 
+  
+# Make merged dataset into long format
+# CviLerRIL1234LongFormat = melt(CviLerRIL1234, id.var = "Pos")
+abcb4pin2Abcb4Colpin2LongFormat = melt(abcb4pin2Abcb4Colpin2, id.var = "Pos")
+
+# Graph 2018, 2019 CviLer_longformat data
+ggplot(abcb4pin2Abcb4Colpin2LongFormat, aes(x = Pos, y = value, color = variable)) +
+  geom_point() +
+  # ylim(0, 3.5) +
+  xlab("Position from Quiescent Center (mm)") +
+  ylab("Relative Elemental Growth Rate (%/hr)") +
+  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  theme_bw()
+
+
+
+
+
+############### Playing with data on 11.20.2019 ###############
+######## Making plot of Cvi REGR Curve for proposal ###########
+
+CtrlCvi = CtrlCvi %>%
+  rename(
+    "Pos" = V1,
+    "CtrlCvi" = V2
+  )
+
+# Recalculate px -> mm & miscalculating REGR values to %
+CtrlCvi$Pos = CtrlCvi$Pos/1463
+CtrlCvi$CtrlCvi = CtrlCvi$CtrlCvi*0.08202
+
+ggplot(CtrlCvi, aes(x = Pos, y = CtrlCvi)) +
+  geom_point() +
+  # ylim(0, 3.5) +
+  xlab("Position from Quiescent Center (mm)") +
+  ylab("Relative Elemental Growth Rate (%/hr)") +
+  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  theme_bw()
+
+```
+
+# Sampling Random Subset of Data
+
+This random sampling is to see how many replicates are needed for imaging. A random sampling of 5-10 replicates will be 
+taken from the dataset of betweeen 18 and 36 replicates. If 5 replicates chosen at random (done several times) can produce 
+the same fitted velocity curve as the original dataset, then only 5 replicates should be imaged in the future when imaging
+the whole RIL population. Keep in mind these must be 5 ~good~ replicates.
+
+```{r randomSubset}
+
+###########################################
+######### Graph of all Replicates #########
+###########################################
+
+## Load in data, rename columns, merge the Cvi & Ler datasets, turn merged dataset into long format, and then graph it!
+LerAUXIN = read_csv("/Users/ashleyhenry/Desktop/avgFittedVel_AUXIN_Ler.csv")
+LerCTRL = read_csv("/Users/ashleyhenry/Desktop/avgFittedVel_CTRL_Ler.csv")
+
+LerAUXIN = LerAUXIN %>%
+  rename(
+    "Pos" = V1,
+    "LerAUXIN" = V2
+  )
+
+LerCTRL = LerCTRL %>%
+  rename(
+    "Pos" = V1,
+    "LerCTRL" = V2
+  )
+
+LerAUXINCTRL = merge(LerAUXIN,
+                   LerCTRL,
+                   by = "Pos")
+
+LerAUXINCTRL_longformat = melt(LerAUXINCTRL, id.var = "Pos") # %>%
+#   mutate(Pos_mm = Pos / 1463) %>%
+#   mutate(value_mmhr = value * 0.08202)
+
+# Graph 2019 Cvi and Ler data [ called "original" dataset i.e. before subsetting]
+ggplot(LerAUXINCTRL_longformat, aes(x = Pos, y = value, color = variable)) +
+  geom_point() +
+  # ylim(0,3.5) +
+  xlab("Position from Root Tip (px)") +
+  ylab("Velocity from Root Tip (px/frame)") +
+  ggtitle("Control vs IAA Cvi and Ler") +
+  theme_bw()
+
+###########################################
+####### Start subsetting replicates #######
+###########################################
+
+parameters = res[[1]]$summary_table # Makes variable to save parameter summary table
+
+# How to select specific (either one or many) rows from res datatable
+parameters[10,]
+parameters[c(1,3,5,7,8),]
+
+# Create your list of replicates you can choose from
+## Ex: if had to remove replicate 24 from dataset, don't include 23 in your gIdx
+## Note: Make specific name for each genotype/condition!!!
+Cvi2019_gIdx = c(0:36)
+Ler2019_gIdx = c(0:30)
+
+# Create variable to save how many replicates to test at one time
+## Start with 5-6, increase this if have to
+idx = 5
+
+# Get subset of summary_table data for previously randomly selected replicates
+subsetReplicates = sort(sample(Cvi2019_gIdx, idx, replace = FALSE))
+parametersSubset = parameters[c(subsetReplicates),]
+View(parametersSubset)
+
+
+```
+
