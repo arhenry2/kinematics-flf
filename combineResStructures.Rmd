@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "Combine Res Structures"
 output: html_document
 ---
 
@@ -22,7 +22,7 @@ require(reshape2)
 library(dplyr)
 ```
 
-```{r Load-and-Combine_Res_Structure_TEST}
+```{r TESTLoad-and-Combine_Res_Structure}
 # Loads desired res structure into environment
 foo <- load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_SlowFastRILs.RData")
 foo = get(foo)
@@ -87,8 +87,23 @@ for (i in 1:length(res)) {
 }
 
 # Badabing badaboom, combined & saved parameter summary tables
-save(RILParameterSummaryTable, file = "RILParameterSummaryTable.RData")
+save(RILParameterSummaryTable, file = "RILParameterSummaryTable_CviLerRILs1_10.RData")
 ```
+
+```{r combine_phenotype_tables}
+# This code chunk is to combine output from above ("Combine-Summary-Tables-of-Res-Structure")
+## This will create a table for the input of the R/qtl2 package
+
+# start with file you just created (^) & see how you can for loop an rbind() function
+
+
+```
+
+
+
+
+
+
 
 
 
