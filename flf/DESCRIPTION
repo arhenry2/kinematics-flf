@@ -1,0 +1,11 @@
+Package: flf
+Type: Package
+Title: Kinematic Analysis using Flexible Logistic Function
+Version: 0.1.0
+Author: Ashley Henry
+Maintainer: The package maintainer <arhenry2@wisc.edu>
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
