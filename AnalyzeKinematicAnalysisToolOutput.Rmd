@@ -28,7 +28,7 @@ require(reshape2)
 ```{r load-data, echo=FALSE}
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
-masterPath <- "/Users/ashleyhenry/Desktop/RILPop_Whole/imagingRound1/CviLer_RILs_1-10_1"
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_Whole/imagingRound1/RILs_161-162_1"
 
 res <- processMasterFolder(masterPath)
 
@@ -43,7 +43,7 @@ pos        <- seq(0, 2000, 1)
 ```{r save-res-structure}
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "res_CviLer_IAACtrl.RData")
+save(res, file = "res_RILs_161-162_1.RData")
 # Loads res into environment
 load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_IAACtrl.RData")
 ```

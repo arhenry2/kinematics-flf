@@ -33,9 +33,25 @@ foofah = rbind(foo, fah)
 
 ```
 
-
 ```{r Load-Res-Structures}
-CviLerRILs1_10 <- load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_RILs1-10.RData")
+# Iteratively loads in all res structures from ~/kinematics-flf directory by:
+## Loads RData file into new environment
+## Then extracts res variable
+loadRData <- function(fileName) {
+  #loads an RData file, and returns it
+  e1 = new.env()
+  load(fileName, e1)
+  get("res", e1)
+}
+
+# Pulls filenames from directory
+fils <- matrix(list.files("~/kinematics-flf", pattern="RData$", full.names = TRUE, recursive = TRUE))
+# Loading them into RES structure
+RES <- lapply(fils, loadRData)
+
+# Old way of loading in one res strucutre at a time (aka manually)
+## Don't do this, please, or Julian will get, like, really mad
+CviLerRILs1_10 <- load("~/kinematics-flf/res_CviLer_RILs_1-10_1.RData")
 CviLerRILs1_10 = get(CviLerRILs1_10)
 ```
 
