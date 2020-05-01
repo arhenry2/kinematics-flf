@@ -22,17 +22,6 @@ require(reshape2)
 library(dplyr)
 ```
 
-```{r TESTLoad-and-Combine_Res_Structure}
-# Loads desired res structure into environment
-foo <- load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_SlowFastRILs.RData")
-foo = get(foo)
-fah <- load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_Cvi_2019vsRILPop.RData")
-fah = get(fah)
-
-foofah = rbind(foo, fah)
-
-```
-
 ```{r Load-Res-Structures}
 # Iteratively loads in all res structures from ~/kinematics-flf directory by:
 ## Loads RData file into new environment
@@ -45,7 +34,15 @@ loadRData <- function(fileName) {
 }
 
 # Pulls filenames from directory
-fils <- matrix(list.files("~/kinematics-flf", pattern="RData$", full.names = TRUE, recursive = TRUE))
+fils <- matrix(list.files("~/rildata", pattern = "RData$", full.names = TRUE, recursive = TRUE))
+
+
+########################################################################################
+###################################### Error here ######################################
+################################ "object 'res' not found" ##############################
+########################################################################################
+
+
 # Loading them into RES structure
 RES <- lapply(fils, loadRData)
 
@@ -54,18 +51,14 @@ save(RES, file = "2020_04_29_allresStructures.RData")
 
 # Old way of loading in one res strucutre at a time (aka manually)
 ## Don't do this, please, or Julian will get, like, really mad
-CviLerRILs1_10 <- load("~/kinematics-flf/res_CviLer_RILs_1-10_1.RData")
-CviLerRILs1_10 = get(CviLerRILs1_10)
+# CviLerRILs1_10 <- load("~/kinematics-flf/res_CviLer_RILs_1-10_1.RData")
+# CviLerRILs1_10 = get(CviLerRILs1_10)
 ```
 
 ```{r Combine-Summary-Tables-of-Res-Structure}
-# Goal: Separate summary table & rawData from res structure to make 2 separate dataframes
-# Used Julian's code from ParameterInvestigation.Rmd, including function & for loop [below]
-## Then rbind() all created summary tables
-## TRICK: rbind() should be done in for loop... (work on this!)
 
 ############## function & for loop written on 30 January 2020 w/ Julian's help #############
-####################### Taken from ParameterInvestigation.Rmd script #######################
+####################### Copied from ParameterInvestigation.Rmd script ######################
 # Function to separate res structure and rename pathname to filename for column "fileName" #
 pathname_to_filename = function(genotype) {
   # Get genotype name from pathname
@@ -90,13 +83,13 @@ pathname_to_filename = function(genotype) {
 }
 
 extractParameters = function(res) {
-  # Create empty dataframe to fill with RIL Parameter Summary Tables
+  # Create empty dataframe to fill with each RIL's parameters
   RILParameterSummaryTable = data.frame(matrix(
                                             ncol = 6, 
                                             nrow = 0, 
                                             dimnames = list(NULL, c("fileName", "x0", "vf", "k", "n", "mle"))))
 
-  # For loop to call "pathname_to_filename" function for each genotype in res
+  # for loop to call "pathname_to_filename" function for each genotype in res
   ## Fills dataframe with all replicates of all RILs' parameter summary tables
   for (i in 1:length(res)) {
     gtype = res[[i]]$summary_table
@@ -111,14 +104,17 @@ extractParameters = function(res) {
 
 # Uses function above to make summary table for parameters of all RILs
 RILParams = lapply(RES, extractParameters)
+RILParam_concatenated = bind_rows(RILParams)
 RILParam_concatenated = bind_rows(RILS)
 
 # Save progress
 save(RILParam_concatenated, file = "2020_04_29_RILsSummaryParameters")
 
 
-
-##################### Archive #######################
+#########################################################
+####################### Archive ########################
+################## as of 29 April 2020 ##################
+#########################################################
 ##### The Original Way of Doing the Above Work^ #####
 # Create empty dataframe to fill with RIL Parameter Summary Tables
 RILParameterSummaryTable = data.frame(matrix(
