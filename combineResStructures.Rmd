@@ -140,21 +140,51 @@ for (i in 1:length(res)) {
 save(RILParameterSummaryTable, file = "RILParameterSummaryTable_CviLerRILs1_10.RData")
 ```
 
-```{r Average-Parameters-by-RIL}
-# This code chunk is to average parameters per RIL to create a table for the input of the R/qtl2 package
-## Uses output from above code chunk "Combine-Summary-Tables-of-Res-Structure" ^
+```{r shorten-fileName-to-be-RILnumbers}
+# This code chunk creates a new column called "RILs" and fills that column with the shortened fileName
+## This allows the RILs to be grouped together and averaged, because now they have the same name to be grouped
 
 # Start with file you just created (^), need to load() then get() to have in environment
 AllRILs_SummaryParameters = load("~/rildata/2020_04_29_RILsSummaryParameters")
 AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
 
+# Makes a column of shortened RIL names by copying the fileName column
+AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName # Make copy of fileName column called RILs
 
-# Info from RILs:
+# Extracts the "RIL##" from fileName and fills in the "RILs" column
+## This works for RILs, but need to correct for Cvi & Ler
+AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
+
+# Filter out NAs from the dataframe's RILs column (which are Cvi & Ler)
+## Using string split(), and "--" as the separator
+## Makes that output into a matrix (to index in next line)
+correctNAs = strsplit(AllRILs_SummaryParameters$fileName[is.na(AllRILs_SummaryParameters$RILs)], split = "--", fixed = TRUE)
+correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
+
+# Takes column from above output that contains "Cvi" and "Ler" (this time it's 2nd column, hence correctNAs[,2])
+## Replaces the NAs with "Cvi" and "Ler" strings
+AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correctNAs[,2]
+```
+
+```{r Average-Parameters-by-RIL}
+# This code chunk is to average parameters per RIL to create a table for the input of the R/qtl2 package
+## Uses output from above code chunk "Combine-Summary-Tables-of-Res-Structure" ^
+
+
+
+############### Try to get Averages Now via aggregate() ###############
+
+# Aggregation to happen soon [4.30.2020]
+AllRILs_SummaryParameters %>% 
+    group_by(fileName) %>% #grouped by RIL variable
+    summarise_each(funs(mean = mean(vf, na.rm = TRUE)))
+    summarise_each(funs(mean = mean(., na.rm = TRUE)))
+
+# Info needed from RILs:
 mean() # average of that RIL's parameter
 sd() # st dev of that RIL's parameter
 var() # variance of that RIL's parameter
 sum() # No. of samples for that RILs
-
 
 # could use aggregate() function to create subset of data, calc stats on that, then returns in convenient format
 ## This is organizing the data alphabetically, but not calc'ing stats and removes fileName... 
@@ -164,82 +194,6 @@ tst = aggregate(AllRILs_SummaryParameters, by = list(AllRILs_SummaryParameters$f
 tst2 = aggregate(AllRILs_SummaryParameters,
                 by = list(AllRILs_SummaryParameters$fileName),
                 FUN = mean)
-
-# Trying a third method, as suggested by someone on StackOverflow
-## This isn't grouping, just takes the mean of each RIL sample... ugh
-#### It's doing this b/c each name is different...
-# Need to extract just the RIL number from each sample, then can group & take average
- 
-# Example from StackOverflow
-longyear = "Y.1992.a1"
-year = gsub("^.\\.(\\d+)\\..*", "\\1", longyear)
-
-longname = "RILpop--RIL10--RIL10_001_3.5--"
-longname = "RIL30--RIL1_011_2--"
-longname = "FastRILs--RIL137_01--"
-name2 = str_extract(longname, "[A-Z]+[0-9]+") # this works on all but Cvi/Ler!!!
-
-# Now make a column of shortened RIL names
-AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName # Make copy of fileName column called RILs
-# Using gsub() here
-# AllRILs_SummaryParameters$RILs <- gsub("[A-Z]+[0-9]+", "\\1", AllRILs_SummaryParameters$RILs)
-
-
-AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") # THIS ONE WORKS, FLIPPING FINALLY!!! WOOOOOOOTTTTTT!!!! now just need to correct for Cvi & Ler
-# Filter out NAs (Cvi & Ler)
-
-
-var = strsplit(AllRILs_SummaryParameters$fileName, split = "--", fixed = TRUE)
-
-AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)]
-
-year = gsub("^.\\.(\\d+)\\..*", "\\1", longyear)
-
-
-# Try above method with strsplit()
-## Doesn't work, just continues with Cvi like an idiot...
-AllRILs_SummaryParameters$RILs <- unlist(strsplit(AllRILs_SummaryParameters$RILs, split = '_', fixed = TRUE))[1]
-AllRILs_SummaryParameters$RILs <- unlist(strsplit(AllRILs_SummaryParameters$RILs, split = '--', fixed = TRUE))[2]
-
-
-
-
-# Regular expression practice, need to extract just RIL## & Cvi/Ler from each of these
-## This works! Splits the string into parts according to separator & selects the 1st (s1) or 2nd (s2) part of the string (as shown in [] brackets at end of line)
-s = "RIL1--RIL1_011_2--"
-s = "RILpop--RIL10--RIL10_001_3.5--"
-s = "FastRILs--RIL137_01--"
-s = "RILpop--Cvi--Cvi_001_3--"
-s1 = unlist(strsplit(s, split = '_', fixed = TRUE))[1]
-s2 = unlist(strsplit(s1, split = '--', fixed = TRUE))[2] #this works!!!
-
-# Trying gsub again, because strpslip will only take first element and fill in whole column with that 1st element's shortened name
-
-
-
-
-# Now to make new column w/ just RIL Number & Cvi/Ler
-# This chops the name correctly, but is only chopping "Cvi" for every sample
-AllRILs_SummaryParameters$RILs <- unlist(strsplit(AllRILs_SummaryParameters$fileName, split = '_', fixed = TRUE))[1]
-
-AllRILs_SummaryParameters$RILs <- unlist(strsplit(AllRILs_SummaryParameters$RILs, split = '--', fixed = TRUE))[2]
-
-
-
-
-
-
-
-
-
-
-# Aggregation to happen soon [4.30.2020]
-AllRILs_SummaryParameters %>% 
-    group_by(fileName) %>% #grouped by RIL variable
-    summarise_each(funs(mean = mean(vf, na.rm = TRUE)))
-    summarise_each(funs(mean = mean(., na.rm = TRUE)))
-
-
 ```
 
 
