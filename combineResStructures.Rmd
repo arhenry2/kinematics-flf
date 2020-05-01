@@ -165,31 +165,31 @@ AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correct
 ```{r Average-Parameters-by-RIL}
 # This code chunk is to average parameters per RIL to create a table for the input of the R/qtl2 package
 ## Uses output from above code chunk "Combine-Summary-Tables-of-Res-Structure" ^
-
-
-
-############### Try to get Averages Now via aggregate() ###############
-
-# Aggregation to happen soon [4.30.2020]
-AllRILs_SummaryParameters %>% 
-    group_by(fileName) %>% #grouped by RIL variable
-    summarise_each(funs(mean = mean(vf, na.rm = TRUE)))
-    summarise_each(funs(mean = mean(., na.rm = TRUE)))
-
 # Info needed from RILs:
 mean() # average of that RIL's parameter
 sd() # st dev of that RIL's parameter
 var() # variance of that RIL's parameter
 sum() # No. of samples for that RILs
 
-# could use aggregate() function to create subset of data, calc stats on that, then returns in convenient format
-## This is organizing the data alphabetically, but not calc'ing stats and removes fileName... 
-tst = aggregate(AllRILs_SummaryParameters, by = list(AllRILs_SummaryParameters$fileName),
-             mean, na.rm = TRUE)
-# Doesn't work & now I'm confused...
-tst2 = aggregate(AllRILs_SummaryParameters,
-                by = list(AllRILs_SummaryParameters$fileName),
-                FUN = mean)
+############### Try to get Averages Now via aggregate() ###############
+## Note: The following code works, but replace the original data in the table
+## How to mutate rows so I can have means, sd, var, & n in same table?
+
+# Aggregation to find mean
+AllRILs_SummaryParameters %>% 
+  group_by(RILs) %>% #grouped by RIL variable
+  summarise_each(funs(mean = mean(., na.rm = TRUE))) 
+
+# Variance of each RIL's parameters
+AllRILs_SummaryParameters %>% 
+  group_by(RILs)%>%
+  summarise_each(funs(var = var(., na.rm = TRUE)))
+
+# St. dev of each RIL's parameters
+AllRILs_SummaryParameters %>% 
+  group_by(RILs)%>%
+  summarise_each(funs(sd = sd(., na.rm = TRUE)))
+
 ```
 
 
