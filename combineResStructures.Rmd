@@ -172,15 +172,11 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_06_AllRILs_SummaryParame
 mean() # average of that RIL's parameter
 sd() # st dev of that RIL's parameter
 var() # variance of that RIL's parameter
-sum() # No. of samples for that RILs
+tally() # No. of samples for each RIL
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column
 AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_06_AllRILs_SummaryParameters")
-
-
-############### Try to get Averages Now via summarise_each() ###############
-# 2020-05-06
 
 # Use summarise_each and funs() to calculate stats for all parameters
 ## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
@@ -200,6 +196,12 @@ AllRILs_VarianceParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
   select(-X, -fileName) %>%
   summarise_each(funs(var))
+
+AllRILs_nParameters = AllRILs_SummaryParameters %>%
+  group_by(RILs) %>%
+  select(-X, -fileName) %>%
+  # count(RILs, vf) %>%
+  tally()
 
 ```
 
