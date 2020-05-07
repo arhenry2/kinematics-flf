@@ -165,7 +165,67 @@ AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correct
 write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_06_AllRILs_SummaryParameters")
 ```
 
-```{r Average-Parameters-by-RIL}
+```{r sample-size-balancing}
+# Load in data saved from previous code chunk ^
+# Problem: also loads in rownames as 1st column, fix this?
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_06_AllRILs_SummaryParameters")
+
+# Need to find RILs w/ 6+ samples & randomly reduce that to 5
+
+# Variable for threshold of replicate numbers, may be used later so code is dynamic
+SAMPLETHRESH = 5
+# Summary table subset that has column for RIL number and column for no. of replicates of that RIL no.
+AllRILs_nParameters = AllRILs_SummaryParameters %>%
+  group_by(RILs) %>%
+  select(-X, -fileName) %>%
+  tally() #>%
+  filter(n > SAMPLETHRESH)
+
+# Function to make data subset of RILs that have >5 replicates
+drawRILSamples = function(ril){
+  # SmallScale = AllRILs %>%
+  # filter(RILs == ril)
+  # randSample = sample_n(SmallScale, SAMPLETHRESH)
+  
+  # Takes in whole summary table of all RILs
+  rilSample = AllRILs_SummaryParameters %>% 
+    # Only filter out specified RIL replicates
+    ## "ril" in this case is a list of RILs that have >5 replicates (RILs2Sample below)
+    filter(RILs == ril)
+  # saves the RILs that have >5 replicates in data subset called randSample
+  randSample = sample_n(rilSample, 5)
+  # function output is data subset in randSample
+  return(randSample)
+}
+
+# Creates list of RILs that are in the AllRILs_nParameters that have >5 replicates
+RILs2Sample = AllRILs_nParameters$RILs
+
+# Uses drawRILSamples function to create data subset of randomly selected RILs from the list of RILs that contained >5 replicates
+subsetwCorrectedSampleSize = lapply(RILs2Sample, drawRILSamples) # right data (maybe?), wrong format
+# Fixed format of data subset with corrected replicate size
+subsetwCorrectedSampleSize = bind_rows(subsetwCorrectedSampleSize) # Ta daaaa
+
+# Now make separate dataframe containing only RILs with <=5 replicates
+# Create list of RILs with okay relicate numbers
+subsetwFineSamples = AllRILs_SummaryParameters %>%
+  group_by(RILs) %>%
+  select(-X, -fileName) %>%
+  tally() %>%
+  filter(n <= SAMPLETHRESH)
+
+# Create data subset only containing RILs with correct number of replicates
+## Will be binded with subset of data that just corrected replicate number
+subsetwFineSamples2 = AllRILs_SummaryParameters %>%
+  subset(RILs %in% subsetwSmallSamples$RILs)
+
+# The final dataframe containing corrected number of replicates for each RIL
+## Please rename~~~~~~
+thebigboi = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize)
+
+```
+
+```{r Parameter-stats-by-RIL}
 # This code chunk is to average parameters per RIL to create a table for the input of the R/qtl2 package
 ## Uses output from previous code chunk "shorten-fileName-to-be-RILnumbers"
 # Info needed from RILs:
@@ -173,10 +233,6 @@ mean() # average of that RIL's parameter
 sd() # st dev of that RIL's parameter
 var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
-
-# Load in data saved from previous code chunk ^
-# Problem: also loads in rownames as 1st column
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_06_AllRILs_SummaryParameters")
 
 # Use summarise_each and funs() to calculate stats for all parameters
 ## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
@@ -200,7 +256,6 @@ AllRILs_VarianceParameters = AllRILs_SummaryParameters %>%
 AllRILs_nParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
   select(-X, -fileName) %>%
-  # count(RILs, vf) %>%
   tally()
 
 ```
