@@ -178,15 +178,12 @@ SAMPLETHRESH = 5
 AllRILs_nParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
   select(-X, -fileName) %>%
-  tally() #>%
+  tally() %>%#?
   filter(n > SAMPLETHRESH)
 
 # Function to make data subset of RILs that have >5 replicates
 drawRILSamples = function(ril){
-  # SmallScale = AllRILs %>%
-  # filter(RILs == ril)
-  # randSample = sample_n(SmallScale, SAMPLETHRESH)
-  
+
   # Takes in whole summary table of all RILs
   rilSample = AllRILs_SummaryParameters %>% 
     # Only filter out specified RIL replicates
@@ -217,11 +214,14 @@ subsetwFineSamples = AllRILs_SummaryParameters %>%
 # Create data subset only containing RILs with correct number of replicates
 ## Will be binded with subset of data that just corrected replicate number
 subsetwFineSamples2 = AllRILs_SummaryParameters %>%
-  subset(RILs %in% subsetwSmallSamples$RILs)
+  subset(RILs %in% subsetwFineSamples$RILs)
 
 # The final dataframe containing corrected number of replicates for each RIL
 ## Please rename~~~~~~
-thebigboi = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize)
+AllRILsCorrectedSampleSize = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize)
+
+# Save new dataset with corrected sample size (<= 5 samples) in csv file
+write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_05_08_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 ```
 
@@ -234,29 +234,39 @@ sd() # st dev of that RIL's parameter
 var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
+# Load in csv with corrected sample size data
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_08_AllRILs_CorrectedSampleSize_SummaryParameters")
+
+
 # Use summarise_each and funs() to calculate stats for all parameters
 ## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
 ## Removed X (rownames created from csv) and fileName column from dataframe
 ## Calc'd chosen stat via summarise_each(funs())
 AllRILs_AveragedParameters = AllRILs_SummaryParameters %>% 
   group_by(RILs) %>% 
-  select(-X, -fileName) %>%
+  select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(mean))
 
 AllRILs_StDevParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
-  select(-X, -fileName) %>%
+  select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(sd))
 
 AllRILs_VarianceParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
-  select(-X, -fileName) %>%
+  select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(var))
 
 AllRILs_nParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
-  select(-X, -fileName) %>%
+  select(-X, -X.1, -fileName, -mle) %>%
   tally()
+
+# Save all files from above
+write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_08_AllRILs_AveragedParameters")
+write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_08_AllRILs_StDevParameters")
+write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_08_AllRILs_VarianceParameters")
+write.csv(AllRILs_nParameters, "~/rildata/2020_05_08_AllRILs_nParameters")
 
 ```
 
