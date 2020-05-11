@@ -263,10 +263,12 @@ AllRILs_nParameters = AllRILs_SummaryParameters %>%
   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_08_AllRILs_AveragedParameters")
-write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_08_AllRILs_StDevParameters")
-write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_08_AllRILs_VarianceParameters")
-write.csv(AllRILs_nParameters, "~/rildata/2020_05_08_AllRILs_nParameters")
+write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_08_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/Desktop/2020_05_08_AllRILs_AveragedParameters.csv")
+
+write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_08_AllRILs_StDevParameters.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_08_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/2020_05_08_AllRILs_nParameters.csv")
 
 ```
 
