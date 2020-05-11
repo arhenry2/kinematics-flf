@@ -6,7 +6,7 @@ library(data.table)
 library(qtl2)
 
 # Folder with all of the input files for this R script
-setwd("/Users/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
+setwd("~/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
 
 ############### Remove Tri-allelics, formating hmp to R/qtl ####################
 ############### recode snps into major minor 1:3 ###############################
@@ -73,16 +73,17 @@ new[row,2] <- sum(dat[row,] == 'G'|dat[row,] == 'C'|dat[row,] == 'A'|dat[row,] =
 View(new)
 write.csv(new, file="SNPsCount.csv")
 
-############# RQTL on B97xB73 NAM, Cold Tolerance Project, MW, GW, CA, DL ######################
-#/B97xB73    
-  #/out                         -output folder from analysis
-  #/B97xB73.working.json       - JSON which calls the objects dependents for rQTl2
-    # /B97xB73.RIL.MAP.csv     - MAP information, with SNP name, CHR, and Pos for each sitename
-    # /B97xB73.RIL.numSNPs.csv - SNPs in numeric coded format for rqtl, 
-    # /B73xB97.phe.csv         - Phenotype.
+
+################# R/qtl on CvixLer RIL Population, Kinematic parameters VF, K, N ################
+#/CvixLer    
+#/out                         -output folder from analysis
+# /CvixLer.working.json       - JSON which calls the objects dependents for rQTl2
+# /CvixLer.RIL.MAP.csv        - MAP information, with SNP name, Chr, and Pos for each sitename
+# /CvixLer.RIL.numSNPs.csv    - SNPs in numeric coded format for R/qtl, 
+# /CvixLer.phe.csv            - Phenotypes
 ################################### Mapping #####################################################
 # read json object which is calling the MAP, NUM, and Pheno within rQTLmeta
-  CT<-read_cross2("CvixLer.json")
+  CT <- read_cross2("/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/SamebutwithCviLer/CvixLer.working.json")
   CT   # summary; crosstype "riself" for 2-way RIL by selfing 
   # names(CT)
   # head(CT$geno)
