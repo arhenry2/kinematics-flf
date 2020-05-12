@@ -88,18 +88,23 @@ write.csv(new, file="SNPsCount.csv")
   # names(CT)
   # head(CT$geno)
   # head(CT$pheno)
-  g1 <- do.call("cbind", CT$geno) # CT$geno is a list of 10 chromosomes, combine 10 chromosomes
-# Pseudomarkers improve resolution, but need huge memory. step=0 does nothing
+# CT$geno is a list of 5 chromosomes, combine 5 chromosomes via cbind 
+## do.call() allows cbind of multiple objects/vectors
+  g1 <- do.call("cbind", CT$geno) 
+# Pseudomarkers improve resolution, but need huge memory; step=0 does nothing
   map <- insert_pseudomarkers(CT$gmap, step=0, stepwidth="max")
   pr <- calc_genoprob(CT, map, error_prob = 0.002)
-# For each individual at each position, find the genotype with the maximum marginal probability.
+# For each individual at each position, find the genotype with the maximum marginal probability
+## max marginal probability = the max prob of an event irrespective of the outcome of another variable (instead of conditional prob)
+## I think it converts "pr" info into "1" or "NA"?
   m1 <- maxmarg(pr)
-# Estimate the numbers of crossovers in each individual on each chromosome.
-  xo1 <- count_xo(m1)
-  k_loco <- calc_kinship(pr, "loco")
-# QTL mapping. col6 T50; col7 T50Cont
-  out <- scan1(pr, CT$pheno[,1], k_loco, cores = 4) 
-  summary(out)
+# Estimate the numbers of crossovers in each individual on each chromosome
+  xo1 <- count_xo(m1) # produced dataframe with RILs vs Chr 1-5, filled in w/ zeros (no crossovers?)
+  k_loco <- calc_kinship(pr, "loco") # produced list of lists containing #s from 0.7-0.9 (what is this??)
+# QTL mapping. cols: 1=x0, 2=vf, 3=k, 4=n (I think) 
+  out <- scan1(pr, CT$pheno[,1], k_loco, cores = 4)
+  summary(out) # Code must be broken, says here the mean of pheno x0 = 0.1701820...?) [2020_05_12]
+   
 # Permutation testing
   operm <- scan1perm(pr[,1:5], CT$pheno[,1], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
