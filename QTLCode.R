@@ -1,9 +1,10 @@
 # install.packages("data.table")
 # install.packages("qtl2", repos="http://rqtl.org/qtl2cran")
+# install.packages("qtl")
 
 library(data.table)
-#library(help=data.table)
-library(qtl2)
+# library(qtl2)
+library(qtl)
 
 # Folder with all of the input files for this R script
 setwd("~/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
@@ -92,7 +93,7 @@ write.csv(new, file="SNPsCount.csv")
 ## do.call() allows cbind of multiple objects/vectors
   g1 <- do.call("cbind", CT$geno) 
 # Pseudomarkers improve resolution, but need huge memory; step=0 does nothing
-  map <- insert_pseudomarkers(CT$gmap, step=0, stepwidth="max")
+  map <- insert_pseudomarkers(CT$gmap, step = 0, stepwidth = "max")
   pr <- calc_genoprob(CT, map, error_prob = 0.002)
 # For each individual at each position, find the genotype with the maximum marginal probability
 ## max marginal probability = the max prob of an event irrespective of the outcome of another variable (instead of conditional prob)
@@ -104,14 +105,14 @@ write.csv(new, file="SNPsCount.csv")
 # QTL mapping. cols: 1=x0, 2=vf, 3=k, 4=n (I think) 
   out <- scan1(pr, CT$pheno[,1], k_loco, cores = 4)
   summary(out) # Code must be broken, says here the mean of pheno x0 = 0.1701820...?) [2020_05_12]
-   
+  
 # Permutation testing
   operm <- scan1perm(pr[,1:5], CT$pheno[,1], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
                    perm_strata = NULL, chr_lengths = NULL, cores = 4) 
 
-sig <- summary(operm, alpha=c(0.05, 0.01)) # Significant threshold               
+sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold               
 #ymx <- maxlod(out) # max lod score
 
 ##### Finding LOD peaks
@@ -120,13 +121,13 @@ peaks
 
 ##### T50 lodcolumn 1; T50Cont lodcolumn 2 colnames(out)[2]
 plot(out, map, lodcolumn = 1, ylim = c(0,8), col = rgb(0, 0,1, 0.5), main = paste0(colnames(out)[1]))
-plot(out,map,lodcolumn=2,col=rgb(1,0,0,0.5), main=paste0(colnames(out)[2]),add=TRUE)
-abline(h=sig[,1], col=rgb(0,0,1,0.5)) # For T50
-abline(h=sig[,2], col=rgb(1,0,0,0.5)) # For T50Cont
-legend("topleft", lwd=2, col=c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), colnames(out), bty="n")
+plot(out, map, lodcolumn = 2, col = rgb(1,0,0,0.5), main = paste0(colnames(out)[2]), add = TRUE)
+abline(h = sig[,1], col = rgb(0,0,1,0.5)) # For T50
+abline(h = sig[,2], col = rgb(1,0,0,0.5)) # For T50Cont
+legend("topleft", lwd = 2, col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), colnames(out), bty = "n")
 
-plot(out,map[peaks[2,3]],lodcolumn=2,xlim=c(peaks[2,6],peaks[2,7]),
-                                      ylim=c(0,7), main=paste0(colnames(out)[2]))
+plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
+                                      ylim = c(0,7), main = paste0(colnames(out)[2]))
 dev.off()
 ##########################################################################################################
 ##### Allele effect
