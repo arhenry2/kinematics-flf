@@ -1,79 +1,12 @@
 # install.packages("data.table")
 # install.packages("qtl2", repos="http://rqtl.org/qtl2cran")
-# install.packages("qtl")
 
 library(data.table)
-# library(qtl2)
-library(qtl)
+library(qtl2)
 
 # Folder with all of the input files for this R script
-setwd("~/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
-
-############### Remove Tri-allelics, formating hmp to R/qtl ####################
-############### recode snps into major minor 1:3 ###############################
-
-# load file from Tassel5
-map<-fread("B97XB73/B73xB97.104K.impute.BiAll.hmp.txt",stringsAsFactors=FALSE)
-
-# replace IUPAC to bi-allelic dossage, set heterozygous to NA
-map[map=="A"] <- "AA"
-map[map=="G"] <- "GG"
-map[map=="C"] <- "CC"
-map[map=="T"] <- "TT"
-map[map=="N"] <- NA
-map[map=="R"] <- NA
-map[map=="Y"] <- NA
-map[map=="S"] <- NA
-map[map=="W"] <- NA
-map[map=="K"] <- NA
-map[map=="M"] <- NA
-map[map=="-"] <- NA
-map[map=="0"] <- NA
-#View (map)
-
-# SNP list of tri-allelic from Tassel 5, filtered on Allele 3 freq in Excel
-list <- read.csv("B97XB73/PruneList.csv", header=FALSE)
-setlist <- as.character(list$V1)
-str(setlist)
-newdata <- map[!map$`rs#` %in% setlist,] # delete SNPs in PruneList from map
-dim(newdata)
-
-id<-newdata[,1:11]   # identification columns
-SNP <- newdata[,12:ncol(newdata)] # subset file contains SNPs only
-dim(SNP)
-
-# scrime package to recode to 1,2,3 (Major homo het Minor homo)
-RecodeSNP<-recodeSNPs(SNP, first.ref=FALSE) 
-dim(RecodeSNP)
-table(RecodeSNP[,5])
-str(RecodeSNP)
-done<-cbind(id, RecodeSNP) # add id columns
-
-str(done)
-mapinfo <-cbind(done$`rs#`, done$chrom, done$pos)
-colnames(mapinfo) <- c("marker","chr","pos")
-colnames(RecodeSNP)
-
-rownames(RecodeSNP) <- done$`rs#`
-# RecodeSNP[1:5,1:5]
-
-inverseSNP<- t(RecodeSNP)
-
-write.csv(inverseSNP, file="B97xB73.RIL.numSNPs.csv", row.names=FALSE, quote=FALSE)
-write.csv(mapinfo, file="B97xB73.RIL.Map.csv", row.names = FALSE, quote = FALSE)
-
-############# count total number of "A,T,G,C" for each TAXA ##################
-############# pick one for each RIL with least missing data ##################
-dat <- read.table("B73xB97.SNP.txt", header=T)
-new <- data.frame(dat[,1])
-
-# Count number of A/T/G/C per row and subtract by total number of columns
-for (row in 1 : nrow(dat)) {
-new[row,2] <- sum(dat[row,] == 'G'|dat[row,] == 'C'|dat[row,] == 'A'|dat[row,] == 'T')
-  }
-View(new)
-write.csv(new, file="SNPsCount.csv")
-
+# setwd("~/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
+setwd("~/Desktop/Ashley_QTL")
 
 ################# R/qtl on CvixLer RIL Population, Kinematic parameters VF, K, N ################
 #/CvixLer    
@@ -84,7 +17,8 @@ write.csv(new, file="SNPsCount.csv")
 # /CvixLer.phe.csv            - Phenotypes
 ################################### Mapping #####################################################
 # read json object which is calling the MAP, NUM, and Pheno within rQTLmeta
-  CT <- read_cross2("/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/SamebutwithCviLer/CvixLer.working.json")
+# CT <- read_cross2("/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/SamebutwithCviLer/CvixLer.working.json")
+  CT <-read_cross2("CvixLer.working.json") # can use this if in correct directory
   CT   # summary; crosstype "riself" for 2-way RIL by selfing 
   # names(CT)
   # head(CT$geno)
@@ -103,11 +37,11 @@ write.csv(new, file="SNPsCount.csv")
   xo1 <- count_xo(m1) # produced dataframe with RILs vs Chr 1-5, filled in w/ zeros (no crossovers?)
   k_loco <- calc_kinship(pr, "loco") # produced list of lists containing #s from 0.7-0.9 (what is this??)
 # QTL mapping. cols: 1=x0, 2=vf, 3=k, 4=n (I think) 
-  out <- scan1(pr, CT$pheno[,1], k_loco, cores = 4)
-  summary(out) # Code must be broken, says here the mean of pheno x0 = 0.1701820...?) [2020_05_12]
+  out <- scan1(pr, CT$pheno[,1:4], k_loco, cores = 4)
+  summary(out)
   
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,1], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,1:4], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
                    perm_strata = NULL, chr_lengths = NULL, cores = 4) 
@@ -129,8 +63,10 @@ legend("topleft", lwd = 2, col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), colnames(out
 plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
                                       ylim = c(0,7), main = paste0(colnames(out)[2]))
 dev.off()
-##########################################################################################################
-##### Allele effect
+
+
+#####################################################################################################
+##### Allele effect #####
 Aeff <- scan1coef(pr[,"5"], CT$pheno[,"T50"])
 par(mar=c(4.1, 4.1, 1.1, 2.6), las=1)
 col <- c("slateblue", "violetred", "green3")
