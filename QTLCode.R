@@ -17,8 +17,8 @@ setwd("~/Desktop/Ashley_QTL")
 # /CvixLer.phe.csv            - Phenotypes
 ################################### Mapping #####################################################
 # read json object which is calling the MAP, NUM, and Pheno within rQTLmeta
-# CT <- read_cross2("/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/SamebutwithCviLer/CvixLer.working.json")
-  CT <-read_cross2("CvixLer.working.json") # can use this if in correct directory
+# CT <-read_cross2("CvixLer.working.json") # can use this if in correct directory
+  CT <- read_cross2("/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL/CvixLer.working.json")
   CT   # summary; crosstype "riself" for 2-way RIL by selfing 
   # names(CT)
   # head(CT$geno)
@@ -44,7 +44,7 @@ setwd("~/Desktop/Ashley_QTL")
   operm <- scan1perm(pr[,1:5], CT$pheno[,1:4], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
-                   perm_strata = NULL, chr_lengths = NULL, cores = 4) 
+                   perm_strata = NULL, chr_lengths = NULL, cores = 4)
 
 sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold               
 #ymx <- maxlod(out) # max lod score
@@ -54,11 +54,16 @@ peaks <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
 peaks
 
 ##### T50 lodcolumn 1; T50Cont lodcolumn 2 colnames(out)[2]
-plot(out, map, lodcolumn = 1, ylim = c(0,8), col = rgb(0, 0,1, 0.5), main = paste0(colnames(out)[1]))
-plot(out, map, lodcolumn = 2, col = rgb(1,0,0,0.5), main = paste0(colnames(out)[2]), add = TRUE)
-abline(h = sig[,1], col = rgb(0,0,1,0.5)) # For T50
-abline(h = sig[,2], col = rgb(1,0,0,0.5)) # For T50Cont
-legend("topleft", lwd = 2, col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), colnames(out), bty = "n")
+plot(out, map, lodcolumn = 1, ylim = c(0,4), col = rgb(0, 0, 0, 0.5), main = "QTL Map for x0, vf, k, & n") # x0 = black
+plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), main = paste0(colnames(out)[2]), add = TRUE) # vf = red
+plot(out, map, lodcolumn = 3, col = rgb(0, 1, 0, 0.5), main = paste0(colnames(out)[2]), add = TRUE) # k = green
+plot(out, map, lodcolumn = 4, col = rgb(0, 0, 1, 0.5), main = paste0(colnames(out)[2]), add = TRUE) # n = blue
+
+abline(h = sig[,1], col = rgb(0, 0, 0, 0.5)) # For x0
+abline(h = sig[,2], col = rgb(1, 0, 0, 0.5)) # For vf
+abline(h = sig[,2], col = rgb(0, 1, 0, 0.5)) # For k
+abline(h = sig[,2], col = rgb(0, 0, 1, 0.5)) # For n
+legend("topleft", lwd = 2, col = c(rgb(0, 0, 0, 0.5), rgb(1, 0, 0, 0.5), rgb(0, 1, 0, 0.5), rgb(0, 0, 1, 0.5)), colnames(out), bty = "n")
 
 plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
                                       ylim = c(0,7), main = paste0(colnames(out)[2]))
