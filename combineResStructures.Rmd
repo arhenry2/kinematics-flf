@@ -161,21 +161,26 @@ correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
 ##########################################################################
 ##########################################################################
 ##### 2020-05-27 Need to add leading zeros...
-# Examples from internet
-NHOUR <- sprintf("%02d",DB$HOUR) # fix to 2 characters 
-tst = sprintf("%03d", AllRILs_SummaryParameters$RILs)
-# Examples from internet
-a <- seq(1,101,25)
-sprintf("RIL_%03d", a) # output: "RIL_001, RIL_026..."
+# Note: First 4 lines of code copied from above!
 
-# Try without having RIL in RIL name
+# Obtain data
+AllRILs_SummaryParameters = load("~/rildata/2020_04_29_RILsSummaryParameters")
+AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
+
+# Make copy of fileName column called RILs
+AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName
+
+# Extract RIL## from filename
 AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
+# Extract only number from RIL##
+AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+")
 
-AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+") 
-
+# Make numbers numeric instead of characters to use sprintf()
 AllRILs_SummaryParameters$RILs <- as.numeric(AllRILs_SummaryParameters$RILs)
-AllRILs_SummaryParameters$RILs <- sprintf("RIL_%03d", as.numeric(AllRILs_SummaryParameters$RILs))
+# Use sprintf() to add "RIL_" leadingzeros to 3 digits "# of RIL"
+AllRILs_SummaryParameters$RILs <- sprintf("RIL_%03d", AllRILs_SummaryParameters$RILs)
 
+# Note: This works for RIL numbers, but messes up with Cvi & Ler
 
 ##########################################################################
 ##########################################################################
