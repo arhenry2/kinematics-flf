@@ -166,11 +166,11 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_06_AllRILs_SummaryParame
 ```
 
 ```{r sample-size-balancing}
+##### This code chunk: Need to find RILs w/ 6+ samples & randomly reduce that to 5 #####
+
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
 AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_06_AllRILs_SummaryParameters")
-
-# Need to find RILs w/ 6+ samples & randomly reduce that to 5
 
 # Variable for threshold of replicate numbers, may be used later so code is dynamic
 SAMPLETHRESH = 5
@@ -225,17 +225,27 @@ write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_05_08_AllRILs_CorrectedSam
 
 ```
 
-```{r Parameter-stats-by-RIL}
+```{r log(Parameter)-stats-by-RIL}
 # This code chunk is to average parameters per RIL to create a table for the input of the R/qtl2 package
 ## Uses output from previous code chunk "shorten-fileName-to-be-RILnumbers"
 # Info needed from RILs:
-mean() # average of that RIL's parameter
+log() # take log() of all parameters to make data more normal
+mean() # average of that RIL's parameter -> won't use this b/c have non-normal data
+median() # median of that RIL's parameter -> WILL use this b/c have non-normal data
 sd() # st dev of that RIL's parameter
 var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
 AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_08_AllRILs_CorrectedSampleSize_SummaryParameters")
+
+# Take log of all parameters to produce more normal data
+AllRILs_logParameters = AllRILs_SummaryParameters %>%
+  # group_by(RILs) %>%
+  select(-X, -X.1, -fileName, -mle) %>%
+  # log(a,b) b = base for log, else R will calc ln()
+  mutate(logK = log(AllRILs_SummaryParameters$k, 10)) %>%
+  mutate(logN = log(AllRILs_SummaryParameters$n, 10))
 
 
 # Use summarise_each and funs() to calculate stats for all parameters

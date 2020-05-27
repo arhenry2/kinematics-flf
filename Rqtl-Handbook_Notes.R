@@ -9,7 +9,7 @@ data(hyper)
 ##### Book Section 4.1: Marker Regression #####
 
 # Plots geno v pheno to see data spread 
-## Compares averages between 2 genotypes at that cM position
+## Compares averages between parent genotypes at that cM position
 par(mfrow = c(1,2))
 plotPXG(hyper, "D4Mit214")
 plotPXG(hyper, "D12Mit20")
@@ -40,6 +40,16 @@ out.em <- scanone(hyper, method = "em")
 plot(out.em, ylab = "LOD score")
 # Plotting both EM & MR method LOD scores on same plat
 plot(out.em, out.mr, chr=c(4, 12), col=c("blue", "red"), ylab="LOD score")
+
+
+
+
+
+
+# Find out how to get the biggest LOD score
+
+
+
 
 
 

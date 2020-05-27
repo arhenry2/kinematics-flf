@@ -14,11 +14,11 @@ setwd("~/Desktop/Ashley_QTL")
 # /CvixLer.working.json       - JSON which calls the objects dependents for rQTl2
 # /CvixLer.RIL.MAP.csv        - MAP information, with SNP name, Chr, and Pos for each sitename
 # /CvixLer.RIL.numSNPs.csv    - SNPs in numeric coded format for R/qtl, 
-# /CvixLer.RIL.AVGphe.csv            - Phenotypes
+# /CvixLer.phe.csv            - Phenotypes
 ################################### Mapping #####################################################
 # read json object which is calling the MAP, NUM, and Pheno within rQTLmeta
-# CT <-read_cross2("CvixLer.working.json") # can use this if in correct directory
-  CT <- read_cross2("/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL/CvixLer.working.json")
+#  CT <- read_cross2("/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/SamebutwithCviLer/CvixLer.working.json")
+  CT <-read_cross2("CvixLer.working.json")
   CT   # summary; crosstype "riself" for 2-way RIL by selfing 
   # names(CT)
   # head(CT$geno)
@@ -44,7 +44,7 @@ setwd("~/Desktop/Ashley_QTL")
   operm <- scan1perm(pr[,1:5], CT$pheno[,1:4], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
-                   perm_strata = NULL, chr_lengths = NULL, cores = 4)
+                   perm_strata = NULL, chr_lengths = NULL, cores = 4) 
 
 sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold               
 #ymx <- maxlod(out) # max lod score
@@ -53,34 +53,18 @@ sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold
 peaks <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
 peaks
 
-##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = k; lodcolumn 4 = n
-plot(out, map, lodcolumn = 1, ylim = c(0,4), col = rgb(0, 0, 0, 0.5), main = "QTL Map for x0, vf, k, & n") # x0 = black
-plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # vf = red
-plot(out, map, lodcolumn = 3, col = rgb(0, 1, 0, 0.5), add = TRUE) # k = green
-plot(out, map, lodcolumn = 4, col = rgb(0, 0, 1, 0.5), add = TRUE) # n = blue
-
-abline(h = sig[,1], col = rgb(0, 0, 0, 0.5)) # x0 = black
-abline(h = sig[,2], col = rgb(1, 0, 0, 0.5)) # vf = red
-abline(h = sig[,2], col = rgb(0, 1, 0, 0.5)) # k = green
-abline(h = sig[,2], col = rgb(0, 0, 1, 0.5)) # n = blue
-legend("topright", lwd = 3, col = c(rgb(0, 0, 0, 0.5), rgb(1, 0, 0, 0.5), rgb(0, 1, 0, 0.5), rgb(0, 0, 1, 0.5)), colnames(out), bty = "n")
+##### T50 lodcolumn 1; T50Cont lodcolumn 2 colnames(out)[2]
+plot(out, map, lodcolumn = 1, ylim = c(0,8), col = rgb(0, 0,1, 0.5), main = paste0(colnames(out)[1]))
+plot(out, map, lodcolumn = 2, col = rgb(1,0,0,0.5), main = paste0(colnames(out)[2]), add = TRUE)
+abline(h = sig[,1], col = rgb(0,0,1,0.5)) # For T50
+abline(h = sig[,2], col = rgb(1,0,0,0.5)) # For T50Cont
+legend("topleft", lwd = 2, col = c(rgb(0,0,1,0.5), rgb(1,0,0,0.5)), colnames(out), bty = "n")
 
 plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
                                       ylim = c(0,7), main = paste0(colnames(out)[2]))
 dev.off()
-
-#####################################################################################################
-###### Added by Ashley: Checking the marker regression at markers with the highest LOD scores #######
-#####################################################################################################
-# Plots geno v pheno to see data spread 
-## Compares averages between parent genotypes at that cM position
-par(mfrow = c(2,2))
-# Data = out, markers = ""
-plotPXG(out, "")
-plotPXG(out, "")
-
-#####################################################################################################
-##### Allele effect #####
+##########################################################################################################
+##### Allele effect
 Aeff <- scan1coef(pr[,"5"], CT$pheno[,"T50"])
 par(mar=c(4.1, 4.1, 1.1, 2.6), las=1)
 col <- c("slateblue", "violetred", "green3")
