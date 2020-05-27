@@ -10,6 +10,7 @@ output: html_document
 # install.packages("devtools")
 # install.packages("rowr")
 # install.packages("plotly")
+# install.packages("naniar")
 # setwd("/Users/ashleyhenry/")
 devtools::load_all('/Users/ashleyhenry/flf')
 library(flf)
@@ -20,6 +21,7 @@ library(readr)
 library(rowr)
 require(reshape2)
 library(dplyr)
+library(naniar)
 ```
 
 ```{r Load-Res-Structures}
@@ -139,38 +141,18 @@ save(RILParameterSummaryTable, file = "RILParameterSummaryTable_CviLerRILs1_10.R
 ```{r shorten-fileName-to-be-RILnumbers}
 # This code chunk creates a new column called "RILs" and fills that column with the shortened fileName
 ## This allows the RILs to be grouped together and averaged, because now they have the same name to be grouped
+## Note: Revised on 2020-05-27 to add leading zeros before RIL number
 
 # Start with file you just created (^), need to load() then get() to have in environment
 AllRILs_SummaryParameters = load("~/rildata/2020_04_29_RILsSummaryParameters")
 AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
 
 # Makes a column of shortened RIL names by copying the fileName column
-AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName # Make copy of fileName column called RILs
+## Make copy of fileName column called RILs
+AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName
 
 # Extracts the "RIL##" from fileName and fills in the "RILs" column
 ## This works for RILs, but need to correct for Cvi & Ler
-AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
-
-# Filter out NAs from the dataframe's RILs column (which are Cvi & Ler)
-## Using string split(), and "--" as the separator
-## Makes that output into a matrix (to index in next line)
-correctNAs = strsplit(AllRILs_SummaryParameters$fileName[is.na(AllRILs_SummaryParameters$RILs)], split = "--", fixed = TRUE)
-correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
-
-
-##########################################################################
-##########################################################################
-##### 2020-05-27 Need to add leading zeros...
-# Note: First 4 lines of code copied from above!
-
-# Obtain data
-AllRILs_SummaryParameters = load("~/rildata/2020_04_29_RILsSummaryParameters")
-AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
-
-# Make copy of fileName column called RILs
-AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName
-
-# Extract RIL## from filename
 AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
 # Extract only number from RIL##
 AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+")
@@ -178,19 +160,24 @@ AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[
 # Make numbers numeric instead of characters to use sprintf()
 AllRILs_SummaryParameters$RILs <- as.numeric(AllRILs_SummaryParameters$RILs)
 # Use sprintf() to add "RIL_" leadingzeros to 3 digits "# of RIL"
-AllRILs_SummaryParameters$RILs <- sprintf("RIL_%03d", AllRILs_SummaryParameters$RILs)
+AllRILs_SummaryParameters$RILs <- sprintf("RIL%03d", AllRILs_SummaryParameters$RILs)
+##### Note: This works for RIL numbers, but messes up with Cvi & Ler
 
-# Note: This works for RIL numbers, but messes up with Cvi & Ler
+# Replace RIL0NA with NA
+AllRILs_SummaryParameters$RILs <- str_replace(AllRILs_SummaryParameters$RILs, "RIL0NA", replacement = NA_character_)
 
-##########################################################################
-##########################################################################
+# Filter out NAs from the dataframe's RILs column (which are Cvi & Ler)
+## Using string split(), and "--" as the separator
+## Makes that output into a matrix (to index in next line)
+correctNAs = strsplit(AllRILs_SummaryParameters$fileName[is.na(AllRILs_SummaryParameters$RILs)], split = "--", fixed = TRUE)
+correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
 
 # Takes column from above output that contains "Cvi" and "Ler" (this time it's 2nd column, hence correctNAs[,2])
 ## Replaces the NAs with "Cvi" and "Ler" strings
 AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correctNAs[,2]
 
 # Save progress in csv file
-write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_06_AllRILs_SummaryParameters")
+write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_27_AllRILs_SummaryParameters")
 ```
 
 ```{r sample-size-balancing}
@@ -198,7 +185,7 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_06_AllRILs_SummaryParame
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_06_AllRILs_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_27_AllRILs_SummaryParameters")
 
 # Variable for threshold of replicate numbers, may be used later so code is dynamic
 SAMPLETHRESH = 5
@@ -249,7 +236,7 @@ subsetwFineSamples2 = AllRILs_SummaryParameters %>%
 AllRILsCorrectedSampleSize = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize)
 
 # Save new dataset with corrected sample size (<= 5 samples) in csv file
-write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_05_08_AllRILs_CorrectedSampleSize_SummaryParameters")
+write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_05_27_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 ```
 
@@ -265,7 +252,7 @@ var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_08_AllRILs_CorrectedSampleSize_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_27_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
