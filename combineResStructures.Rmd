@@ -157,6 +157,29 @@ AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[
 correctNAs = strsplit(AllRILs_SummaryParameters$fileName[is.na(AllRILs_SummaryParameters$RILs)], split = "--", fixed = TRUE)
 correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
 
+
+##########################################################################
+##########################################################################
+##### 2020-05-27 Need to add leading zeros...
+# Examples from internet
+NHOUR <- sprintf("%02d",DB$HOUR) # fix to 2 characters 
+tst = sprintf("%03d", AllRILs_SummaryParameters$RILs)
+# Examples from internet
+a <- seq(1,101,25)
+sprintf("RIL_%03d", a) # output: "RIL_001, RIL_026..."
+
+# Try without having RIL in RIL name
+AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
+
+AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+") 
+
+AllRILs_SummaryParameters$RILs <- as.numeric(AllRILs_SummaryParameters$RILs)
+AllRILs_SummaryParameters$RILs <- sprintf("RIL_%03d", as.numeric(AllRILs_SummaryParameters$RILs))
+
+
+##########################################################################
+##########################################################################
+
 # Takes column from above output that contains "Cvi" and "Ler" (this time it's 2nd column, hence correctNAs[,2])
 ## Replaces the NAs with "Cvi" and "Ler" strings
 AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correctNAs[,2]
@@ -252,29 +275,33 @@ AllRILs_logParameters = AllRILs_SummaryParameters %>%
 ## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
 ## Removed X (rownames created from csv) and fileName column from dataframe
 ## Calc'd chosen stat via summarise_each(funs())
-AllRILs_AveragedParameters = AllRILs_SummaryParameters %>% 
+AllRILs_AveragedParameters = AllRILs_logParameters %>% 
   group_by(RILs) %>% 
-  select(-X, -X.1, -fileName, -mle) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(mean))
 
-AllRILs_StDevParameters = AllRILs_SummaryParameters %>%
+AllRILs_MedianParameters = AllRILs_logParameters %>% 
+  group_by(RILs) %>% 
+  select(-X, -X.1, -fileName, -mle) %>%
+  summarise_each(funs(median))
+
+AllRILs_StDevParameters = AllRILs_logParameters %>%
   group_by(RILs) %>%
   select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(sd))
 
-AllRILs_VarianceParameters = AllRILs_SummaryParameters %>%
+AllRILs_VarianceParameters = AllRILs_logParameters %>%
   group_by(RILs) %>%
   select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(var))
 
-AllRILs_nParameters = AllRILs_SummaryParameters %>%
+AllRILs_nParameters = AllRILs_logParameters %>%
   group_by(RILs) %>%
   select(-X, -X.1, -fileName, -mle) %>%
   tally()
 
 # Save all files from above
 write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_08_AllRILs_AveragedParameters.csv")
-write.csv(AllRILs_AveragedParameters, "~/Desktop/2020_05_08_AllRILs_AveragedParameters.csv")
 
 write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_08_AllRILs_StDevParameters.csv")
 write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_08_AllRILs_VarianceParameters.csv")
