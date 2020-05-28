@@ -154,17 +154,23 @@ AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName
 # Extracts the "RIL##" from fileName and fills in the "RILs" column
 ## This works for RILs, but need to correct for Cvi & Ler
 AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
-# Extract only number from RIL##
-AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+")
 
-# Make numbers numeric instead of characters to use sprintf()
-AllRILs_SummaryParameters$RILs <- as.numeric(AllRILs_SummaryParameters$RILs)
-# Use sprintf() to add "RIL_" leadingzeros to 3 digits "# of RIL"
-AllRILs_SummaryParameters$RILs <- sprintf("RIL%03d", AllRILs_SummaryParameters$RILs)
-##### Note: This works for RIL numbers, but messes up with Cvi & Ler
-
-# Replace RIL0NA with NA
-AllRILs_SummaryParameters$RILs <- str_replace(AllRILs_SummaryParameters$RILs, "RIL0NA", replacement = NA_character_)
+#############################################################################################
+######################## Use this chunk if need to add leading zeros ########################
+############ Tried on 2020-05-27 & royally ruined everything for the QTLCode.R! #############
+#############################################################################################
+# # Extract only number from RIL##
+# AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+")
+# 
+# # Make numbers numeric instead of characters to use sprintf()
+# AllRILs_SummaryParameters$RILs <- as.numeric(AllRILs_SummaryParameters$RILs)
+# # Use sprintf() to add "RIL_" leadingzeros to 3 digits "# of RIL"
+# AllRILs_SummaryParameters$RILs <- sprintf("RIL%03d", AllRILs_SummaryParameters$RILs)
+# ##### Note: This works for RIL numbers, but messes up with Cvi & Ler
+# 
+# # Replace RIL0NA with NA
+# AllRILs_SummaryParameters$RILs <- str_replace(AllRILs_SummaryParameters$RILs, "RIL0NA", replacement = NA_character_)
+#############################################################################################
 
 # Filter out NAs from the dataframe's RILs column (which are Cvi & Ler)
 ## Using string split(), and "--" as the separator
@@ -177,7 +183,7 @@ correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
 AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correctNAs[,2]
 
 # Save progress in csv file
-write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_27_AllRILs_SummaryParameters")
+write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_28_AllRILs_SummaryParameters")
 ```
 
 ```{r sample-size-balancing}
@@ -185,7 +191,7 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_27_AllRILs_SummaryParame
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_27_AllRILs_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_28_AllRILs_SummaryParameters")
 
 # Variable for threshold of replicate numbers, may be used later so code is dynamic
 SAMPLETHRESH = 5
@@ -236,7 +242,7 @@ subsetwFineSamples2 = AllRILs_SummaryParameters %>%
 AllRILsCorrectedSampleSize = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize)
 
 # Save new dataset with corrected sample size (<= 5 samples) in csv file
-write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_05_27_AllRILs_CorrectedSampleSize_SummaryParameters")
+write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_05_28_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 ```
 
@@ -252,7 +258,7 @@ var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_27_AllRILs_CorrectedSampleSize_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_28_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
@@ -293,11 +299,11 @@ AllRILs_nParameters = AllRILs_logParameters %>%
   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_27_AllRILs_AveragedParameters.csv")
-write.csv(AllRILs_MedianParameters, "~/rildata/2020_05_27_AllRILs_MedianParameters.csv")
-write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_27_AllRILs_StDevParameters.csv")
-write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_27_AllRILs_VarianceParameters.csv")
-write.csv(AllRILs_nParameters, "~/rildata/2020_05_27_AllRILs_nParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_28_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/2020_05_28_AllRILs_MedianParameters.csv")
+write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_28_AllRILs_StDevParameters.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_28_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/2020_05_28_AllRILs_nParameters.csv")
 
 ```
 

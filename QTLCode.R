@@ -8,16 +8,20 @@ library(qtl2)
 # setwd("~/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
 setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL")
 
+##################################################################################################
+########################## Use this chunk if need to add leading zeros ###########################
+############## Tried on 2020-05-27 & royally ruined everything for the QTLCode.R! ################
+##################################################################################################
 # Need to add leading zeros to genotype data: CvixLer.RIL.numSNPs.csv
 ## Load in data, add zeros to be 3 digits after RIL
 ## Save new RIL numbers with leading zeros as csv file in working directory to use in QTL map making
-geno <- read.csv("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL/CvixLer.RIL.SNPs.csv")
-geno$Genotype <- sprintf("RIL%03d", geno$Genotype)
-geno %>%
-  order(geno$Genotype)
-write.csv(geno, "CvixLer.RIL.SNPs.csv")
+# geno <- read.csv("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL/CvixLer.RIL.SNPs.csv")
+# geno$Genotype <- sprintf("RIL%03d", geno$Genotype)
+# geno %>%
+#   order(geno$Genotype)
+# write.csv(geno, "CvixLer.RIL.SNPs.csv")
 # welp this now says it can't read either geno or pheno files... back to the olde drawing board...
-
+##################################################################################################
 
 ################# R/qtl on CvixLer RIL Population, Kinematic parameters VF, K, N ################
 #/CvixLer    
