@@ -6,15 +6,26 @@ library(qtl2)
 
 # Folder with all of the input files for this R script
 # setwd("~/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
-setwd("~/Desktop/Ashley_QTL")
+setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL")
+
+# Need to add leading zeros to genotype data: CvixLer.RIL.numSNPs.csv
+## Load in data, add zeros to be 3 digits after RIL
+## Save new RIL numbers with leading zeros as csv file in working directory to use in QTL map making
+geno <- read.csv("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL/CvixLer.RIL.SNPs.csv")
+geno$Genotype <- sprintf("RIL%03d", geno$Genotype)
+geno %>%
+  order(geno$Genotype)
+write.csv(geno, "CvixLer.RIL.SNPs.csv")
+# welp this now says it can't read either geno or pheno files... back to the olde drawing board...
+
 
 ################# R/qtl on CvixLer RIL Population, Kinematic parameters VF, K, N ################
 #/CvixLer    
-#/out                         -output folder from analysis
+#/out                         - output folder from analysis
 # /CvixLer.working.json       - JSON which calls the objects dependents for rQTl2
 # /CvixLer.RIL.MAP.csv        - MAP information, with SNP name, Chr, and Pos for each sitename
-# /CvixLer.RIL.numSNPs.csv    - SNPs in numeric coded format for R/qtl, 
-# /CvixLer.RIL.AVGphe.csv            - Phenotypes
+# /CvixLer.RIL.SNPs.csv       - SNPs in numeric coded format for R/qtl, 
+# /CvixLer.RIL.AVGphe.csv     - Phenotypes
 ################################### Mapping #####################################################
 # read json object which is calling the MAP, NUM, and Pheno within rQTLmeta
 # CT <-read_cross2("CvixLer.working.json") # can use this if in correct directory

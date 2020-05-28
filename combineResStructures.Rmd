@@ -274,30 +274,30 @@ AllRILs_AveragedParameters = AllRILs_logParameters %>%
 
 AllRILs_MedianParameters = AllRILs_logParameters %>% 
   group_by(RILs) %>% 
-  select(-X, -X.1, -fileName, -mle) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(median))
 
 AllRILs_StDevParameters = AllRILs_logParameters %>%
   group_by(RILs) %>%
-  select(-X, -X.1, -fileName, -mle) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(sd))
 
 AllRILs_VarianceParameters = AllRILs_logParameters %>%
   group_by(RILs) %>%
-  select(-X, -X.1, -fileName, -mle) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(var))
 
 AllRILs_nParameters = AllRILs_logParameters %>%
   group_by(RILs) %>%
-  select(-X, -X.1, -fileName, -mle) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_08_AllRILs_AveragedParameters.csv")
-
-write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_08_AllRILs_StDevParameters.csv")
-write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_08_AllRILs_VarianceParameters.csv")
-write.csv(AllRILs_nParameters, "~/rildata/2020_05_08_AllRILs_nParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_27_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/2020_05_27_AllRILs_MedianParameters.csv")
+write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_27_AllRILs_StDevParameters.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_27_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/2020_05_27_AllRILs_nParameters.csv")
 
 ```
 
