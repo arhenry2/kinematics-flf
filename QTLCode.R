@@ -52,33 +52,40 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL")
   xo1 <- count_xo(m1) # produced dataframe with RILs vs Chr 1-5, filled in w/ zeros (no crossovers?)
   k_loco <- calc_kinship(pr, "loco") # produced list of lists containing #s from 0.7-0.9 (what is this??)
 # QTL mapping. cols: 1=x0, 2=vf, 3=k, 4=n (I think) 
-  out <- scan1(pr, CT$pheno[,1:4], k_loco, cores = 4)
+
+## Use when selecting a range of columns, make sure to follow through in scan1perm() below
+  # out <- scan1(pr, CT$pheno[,2:6], k_loco, cores = 4) 
+# Use when selecting specific columns
+  out <- scan1(pr, CT$pheno[,c(2,5,6)], k_loco, cores = 4) 
+  
   summary(out)
   
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,1:4], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,c(2,5,6)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
 
-sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold               
+  sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold               
 #ymx <- maxlod(out) # max lod score
 
 ##### Finding LOD peaks
-peaks <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
-peaks
+  peaks <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
+  peaks
 
 ##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = k; lodcolumn 4 = n
-plot(out, map, lodcolumn = 1, ylim = c(0,4), col = rgb(0, 0, 0, 0.5), main = "QTL Map for x0, vf, k, & n") # x0 = black
-plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # vf = red
-plot(out, map, lodcolumn = 3, col = rgb(0, 1, 0, 0.5), add = TRUE) # k = green
-plot(out, map, lodcolumn = 4, col = rgb(0, 0, 1, 0.5), add = TRUE) # n = blue
+  plot(out, map, lodcolumn = 1, ylim = c(0,4), col = rgb(0, 0, 0, 0.5), main = "QTL Map for Average of vf, log(k), & log(n)") # vf = black
+  plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # log(k) = red
+  plot(out, map, lodcolumn = 3, col = rgb(0, 0, 1, 0.5), add = TRUE) # log(n) = blue
+  # plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # n = green
+  # plot(out, map, lodcolumn = 5, col = rgb(0.4, 0, 0.6, 0.5), add = TRUE)# log(n) = violet
 
-abline(h = sig[,1], col = rgb(0, 0, 0, 0.5)) # x0 = black
-abline(h = sig[,2], col = rgb(1, 0, 0, 0.5)) # vf = red
-abline(h = sig[,2], col = rgb(0, 1, 0, 0.5)) # k = green
-abline(h = sig[,2], col = rgb(0, 0, 1, 0.5)) # n = blue
-legend("topright", lwd = 3, col = c(rgb(0, 0, 0, 0.5), rgb(1, 0, 0, 0.5), rgb(0, 1, 0, 0.5), rgb(0, 0, 1, 0.5)), colnames(out), bty = "n")
+  abline(h = sig[,1], col = rgb(0, 0, 0, 0.5)) # vf = black
+  abline(h = sig[,2], col = rgb(1, 0, 0, 0.5)) # log(k) = red
+  abline(h = sig[,3], col = rgb(0, 0, 1, 0.5)) # log(n) = blue
+  # abline(h = sig[,4], col = rgb(0, 1, 0, 0.5)) # n = green
+  # abline(h = sig[,5], col = rgb(0.4, 0, 0.6, 0.5)) # log(n) = violet
+  legend("topright", lwd = 3, col = c(rgb(0, 0, 0, 0.5), rgb(1, 0, 0, 0.5), rgb(0, 0, 1, 0.5), rgb(0, 1, 0, 0.5), rgb(0.4, 0, 0.6, 0.5)), colnames(out), bty = "n")
 
 plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
                                       ylim = c(0,7), main = paste0(colnames(out)[2]))
