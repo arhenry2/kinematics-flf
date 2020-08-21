@@ -1,11 +1,27 @@
 ---
 title: "RIL Set Analysis Script"
+author: "Ashley Henry"
+date: "4/9/2020"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-
+### Gets flf package loaded into environment ###
+# install.packages("backports")
+# install.packages("rcmdcheck")
+# install.packages("devtools")
+# install.packages("rowr")
+# install.packages("plotly")
+# setwd("/Users/ashleyhenry/")
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
 ```
 
 # Script to Analyze RIL Set
@@ -14,10 +30,71 @@ __Note:__ This list is unordered as of 4.9.2020, but will make ordered list to c
 ## Objectives of this script:
 * Outlier testing
 * Parameter statistics
-* REGR curves
 * Velocity curves
 * Goodness of fit for flf curve
+* REGR curves
 * 
+
+```{r load-data, echo=FALSE}
+### Below is copied from AnalyzeKinematicAnalysisToolOutput.Rmd
+### Creates path with folder of folders, each with one rawData.csv file
+### Loads in all of the rawData.csv files ###
+# masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_tmp"
+# masterPath <- "/Users/ashleyhenry/Desktop/UnitTestMasterPath" # unit masterpath for sanity (11.19.2019)
+
+res <- processMasterFolder(masterPath)
+
+# Saves res structure (technically a "large list") to the working directory
+## Saves data in a binary file
+save(res, file = "res_RILs151-162.RData")
+
+```
+
+```{r Load_Res_Structure}
+# Loads desired res structure into environment
+load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_RILs1-10.RData")
+```
+
+```{r renaming-data-parameters}
+########## function & for loop written on 30 January 2020 w/ Julian's help ##########
+# Function to separate res structure and rename pathname to filename for column "fileName"
+pathname_to_filename = function(genotype) {
+  # Get genotype name from pathname
+  genoName = basename(dirname(dirname(toString(genotype$fileName[[1]]))))
+  
+  # Create empty matrix of one column and as many rows as there are of res structure
+  outnames = matrix(1, nrow(genotype))
+
+  # Loops through each row of res
+  ## Extracts pathname from each row in the dataframe
+  ## Extracts filename from each pathname
+  ## outnames = extracted filenames
+  for (i in 1:nrow(genotype)) {
+    namePlay_i  = toString(genotype$fileName[[i]])
+    outnames[i] = basename(dirname(namePlay_i))
+    print(outnames[i])
+  }
+  
+  # Replaces pathname column with outnames column
+  ## Now the column labeled "fileName" has filename instead of pathname
+  genotype[["fileName"]] <- outnames
+  
+  # Return genotype summary table and genotype name
+  gtype_gname = list(genotype, genoName)
+  return(gtype_gname)
+}
+
+# For loop to call "pathname_to_filename" function for each genotype in res
+for (i in 1 : length(res)) {
+  gtype = res[[i]]$summary_table
+  gList = pathname_to_filename(gtype)
+  eval(parse(text = paste0(sprintf("%s = gList[[1]]", gList[[2]]))))
+}
+
+fullData = rbind(Cvi, Ler, RIL1_1, RIL15_2, RIL17, RIL19, RIL4)
+write.csv(fullData, paste('/Users/ashleyhenry/Desktop/fullData.csv'), row.names=F)
+```
 
 
 ```{r NAME}

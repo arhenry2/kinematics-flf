@@ -220,7 +220,6 @@ write.csv(IAACviwithSD, paste('/Users/ashleyhenry/Desktop/IAACviwithandwithoutSD
 
 
 ```{r EvaluateVelandREGRFits}
-
 # Loops through all genotypes/conditions evaluating the equation at a 
 ## value, Pos (fixed position values (0-2000, increments of 1)), to 
 ## calculate velocity and REGR values using the maximum likelihood 

@@ -29,14 +29,14 @@ library(dplyr)
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
-masterPath <- "/Users/ashleyhenry/Desktop/SlowFastRILsExploration/SlowFastRILs/"
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_tmp"
 # masterPath <- "/Users/ashleyhenry/Desktop/UnitTestMasterPath" # unit masterpath for sanity (11.19.2019)
 
 res <- processMasterFolder(masterPath)
 
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "res_SlowFastRILs.RData")
+save(res, file = "res_RILs151-162.RData")
 
 ```
 

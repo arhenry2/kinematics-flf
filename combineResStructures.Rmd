@@ -38,15 +38,15 @@ loadRData <- function(fileName) {
 # Pulls filenames from directory
 fils <- matrix(list.files("~/rildata", pattern = "RData$", full.names = TRUE, recursive = TRUE))
 
+# Loading them into RES structure
+RES <- lapply(fils, loadRData)
+
 
 ########################################################################################
 ###################################### Error here ######################################
 ################################ "object 'res' not found" ##############################
 ########################################################################################
 
-
-# Loading them into RES structure
-RES <- lapply(fils, loadRData)
 
 # Save all that hard work, yeah
 save(RES, file = "2020_04_29_allresStructures.RData")
