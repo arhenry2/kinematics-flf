@@ -42,7 +42,7 @@ save(res, file = "res_RILs151-162.RData")
 
 ```{r Load_Res_Structure}
 # Loads desired res structure into environment
-load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_RILs1-10.RData")
+load("~/rildata/res_CviLer_RILs1-10.RData")
 ```
 
 ```{r renaming-data-parameters}

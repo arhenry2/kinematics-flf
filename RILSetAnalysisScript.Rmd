@@ -38,9 +38,9 @@ __Note:__ This list is unordered as of 4.9.2020, but will make ordered list to c
 * Calculates average, median, st dev, & variance of the parameters for each RIL
 
 ## Script to-dos:
-* REpeatable, efficient outlier testing (one-by one version in AnalyzeKinematic[...].Rmd)
+* Repeatable & efficient outlier testing (one-by one version in AnalyzeKinematic[...].Rmd)
 * Velocity curves (calcs pos & vel from parameters)
-* Goodness of fit for flf curve (R^2, optional: show flf on point cloud for each RIL)
+* Goodness of fit for flf curve (R^2, show flf on point cloud for each RIL)
 * REGR curves (calc pos & REGR from parameters)
 * 
 
@@ -62,11 +62,10 @@ save(res, file = "res_RILs151-162.RData")
 
 ```{r Load_Res_Structure}
 # Loads desired res structure into environment
-load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_RILs1-10.RData")
+load("~/rildata/2020_08_23_allresStructures.RData")
 ```
 
-# Note: The following code chunks are copied from combineResStructures.Rmd
-I copied this here to have one Analysis Script, instead of several scripts doing partial work
+# Note: The following code chunks are copied from combineResStructures.Rmd, to have one Analysis Script instead of several scripts doing partial work
 
 ```{r Load-Res-Structures}
 # Iteratively loads in all res structures from ~/rildata directory by:
@@ -278,7 +277,7 @@ var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_28_AllRILs_CorrectedSampleSize_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
@@ -328,3 +327,48 @@ write.csv(AllRILs_nParameters, "~/rildata/2020_08_23_AllRILs_nParameters.csv")
 
 # From here, load the csv files into Excel to correctly place the RILs in order
 ## There no leading zeros are allowed in QTLCode.R & R won't place them in order without leading zeros...
+```{r fittingVelCurves}
+### Creates numeric vector for means of the parameters ###
+### Makes range of y from 0.0 to 3.5 px/hr ###
+### pos values range from 0-2000 px from QC, increasing by 1 px at a time ###
+ku         <- vector('numeric')
+range_of_y <- range(0, 3.5)
+pos        <- seq(0, 2000, 1)
+
+```
+
+```{r EvaluateVelandREGRFits}
+# Note: This code chunk is copied from AnalyzeKinematic[...].Rmd
+# Loops through all genotypes/conditions evaluating the equation at a 
+## value, Pos (fixed position values (0-2000, increments of 1)), to 
+## calculate velocity and REGR values using the maximum likelihood 
+## estimate parameters for each replicate
+# WARNING: Fits ALL replicates, not the average. To fit the avg vel, 
+## look to the next code chunk
+# Please Note: The final product has the correct units (hallelujah!)
+
+for (i in 1:length(res)) {
+  resultVel <- evaluateVelFits(res[[i]], pos)
+  matrixEnd = ncol(resultVel) - 1
+  for (j in 2:matrixEnd) {
+    resultVel[,j] <- as.numeric(resultVel[,j]) * 0.08202 } # conversion from px/frame to mm/hr for all velocity value columns
+  resultVel[,1] = as.numeric(resultVel[,1]) / 1463 # conversion from px to mm for the one position value column
+  write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosEvaluatedVel', as.numeric(i), '.csv', sep = ""), row.names = F)
+  plot(resultVel[,1], resultVel[,2])
+  
+  ######################################
+  
+  resultREGR <- evaluateREGRFits(res[[i]], pos, 120*100)
+  matrixEnd = ncol(resultREGR) - 1
+  
+  # for (k in 2:matrixEnd) {
+    # resultREGR[,j] <- as.numeric(resultREGR[,j]) * 120} # DOESN'T WORK: conversion from px/frame*frame to px/frame*hr (or %/hr) for all velocity value columns
+  
+  resultREGR[,1] = as.numeric(resultREGR[,1]) / 1463 # WORKS: conversion from px to mm for the one position value column
+  write.csv(resultREGR, paste('/Users/ashleyhenry/Desktop/PosEvaluatedREGR', as.numeric(i), '.csv', sep = ""), row.names = F)
+  plot(resultREGR[,1], resultREGR[,2])
+}
+```
+
+
+

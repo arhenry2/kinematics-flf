@@ -45,7 +45,7 @@ pos        <- seq(0, 2000, 1)
 ## Saves data in a binary file
 save(res, file = "res_RILs_161-162_1.RData")
 # Loads res into environment
-load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_IAACtrl.RData")
+load("~/rildata/res_CviLer_RILs1-10.RData")
 ```
 
 ```{r parameters-summary}
@@ -60,22 +60,22 @@ for (c in 1:length(res)){
 }
 
 # generate vel curve for Ctrl Cvi & Cvi IAA
-parameters_b4pin2 = res[[1]]$summary_table
-parameters_b4 = res[[2]]$summary_table
-parameters_Col = res[[3]]$summary_table
-parameters_pin2 = res[[4]]$summary_table
+parameters_Cvi = res[[1]]$summary_table
+parameters_Ler = res[[2]]$summary_table
+parameters_RIL1_1 = res[[3]]$summary_table
+parameters_RIL1_2 = res[[4]]$summary_table
 
-t.test(parameters_CtrlCvi$vf, parameters_IAACvi$vf, alternative = c("two.sided"), paired = FALSE)
-t.test(log(parameters_CtrlCvi$k), log(parameters_IAACvi$k), alternative = c("two.sided"), paired = FALSE)
-t.test(log(parameters_CtrlCvi$n), log(parameters_IAACvi$n), alternative = c("two.sided"), paired = FALSE)
-
-t.test(parameters_CtrlLer$vf, parameters_IAALer$vf, alternative = c("two.sided"), paired = FALSE)
-t.test(log(parameters_CtrlLer$k), log(parameters_IAALer$k), alternative = c("two.sided"), paired = FALSE)
-t.test(log(parameters_CtrlLer$n), log(parameters_IAALer$n), alternative = c("two.sided"), paired = FALSE)
+# t.test(parameters_CtrlCvi$vf, parameters_IAACvi$vf, alternative = c("two.sided"), paired = FALSE)
+# t.test(log(parameters_CtrlCvi$k), log(parameters_IAACvi$k), alternative = c("two.sided"), paired = FALSE)
+# t.test(log(parameters_CtrlCvi$n), log(parameters_IAACvi$n), alternative = c("two.sided"), paired = FALSE)
+# 
+# t.test(parameters_CtrlLer$vf, parameters_IAALer$vf, alternative = c("two.sided"), paired = FALSE)
+# t.test(log(parameters_CtrlLer$k), log(parameters_IAALer$k), alternative = c("two.sided"), paired = FALSE)
+# t.test(log(parameters_CtrlLer$n), log(parameters_IAALer$n), alternative = c("two.sided"), paired = FALSE)
 
 # Melt data and get boxplots on same grid for all parameters
 # MANUALLY CHANGE FOR CONDITION/GENOTYPE YOU NEED TO INVESTIGATE
-parameters = res[[4]]$summary_table # same as above, makes variable to save parameter summary table
+parameters = res[[1]]$summary_table # same as above, makes variable to save parameter summary table
 
 # parameters = res[[2]]$summary_table # Ler (Cvi above ^ )
 # parameters = res[[3]]$summary_table # RIL1
@@ -96,15 +96,9 @@ ggplot(data = parametersMelted, aes(x = variable, y = value)) +
   facet_wrap( ~ variable, scales = "free")
 
 # addition on 11.19.2019, plot rawData.csv (pos&vel), overplot w/ fitted vel line
-ggplot(data = data.frame(res[[1]]$rawData[[1]]), aes(x = pos, y = vel)) +
+ggplot(data = data.frame(res[[1]]$rawData[[3]]), aes(x = pos, y = vel)) +
   geom_point() +
-  ggtitle(res[[1]]$rawData[[1]]$fileName) #+
-  # ylim(0, 3) +
-  # xlim(0, 2000)
-
-ggplot(data = data.frame(res[[4]]$rawData[[18]]), aes(x = pos, y = vel)) +
-  geom_point() +
-  ggtitle(res[[4]]$rawData[[18]]$fileName) #+
+  ggtitle(res[[1]]$rawData[[2]]$fileName) #+
   # ylim(0, 3) +
   # xlim(0, 2000)
 
@@ -120,6 +114,10 @@ kDist = ggplot(parameters, aes(x = k)) +
 nDist = ggplot(parameters, aes(x = n)) +
   geom_density() +
   ggtitle("Cvi n Density Plot")
+
+vfDist
+kDist
+nDist
 ```
 
 ```{r whatTheHellHappenedThisDay}
@@ -254,16 +252,36 @@ for (i in 1:length(res)) {
 ```{r plot-above-curves}
 Cvi = read_csv("/Users/ashleyhenry/Desktop/PosEvaluatedREGR1.csv")
 Ler = read_csv("/Users/ashleyhenry/Desktop/PosEvaluatedREGR2.csv")
+# RIL1_1 = read_csv("/Users/ashleyhenry/Desktop/PosEvaluatedREGR3.csv")
 
 Cvi = Cvi %>%
   rename(
     "Pos" = V1,
-    # "Cvi_1" = V2 # Make for loop to label the replicate!
+    "Cvi_1" = V2,
+    "Cvi_2" = V3,
+    "Cvi_3" = V4,
+    "Cvi_4" = V5,
+    "Cvi_5" = V6,
+    "Cvi_6" = V7,
+    "Cvi_7" = V8,
+    "Cvi_8" = V9,
+    "Cvi_9" = V10,
+    "Cvi_10" = V11
+    # "Cvi_1" = V2 # Make for loop to label the replicate! [Update: attempting this below]
   )
+
+# for (i in length(Cvi)-1) {
+#       Cvi_i = Cvi$Vi
+# }
 
 Ler = Ler %>%
   rename(
     "Pos" = V1,
+    "Ler_1" = V2,
+    "Ler_2" = V3,
+    "Ler_3" = V4,
+    "Ler_4" = V5,
+    "Ler_5" = V6
     # "Ler_1" = V2 # Make for loop to label the replicate!
   )
 
@@ -300,7 +318,7 @@ ggplot(LerLongFormat, aes(x = Pos, y = value, color = variable)) +
 
 # Note for order of res structure: 
 # 1 = auxinCvi; 2 = auxinLer; 3 = ctrlCvi; 4 = ctrlLer
-parameters = res[[1]]$summary_table
+parameters = res[[2]]$summary_table
 
 # parameters = res[[2]]$summary_table
 # parameters = res[[3]]$summary_table
@@ -325,83 +343,53 @@ avgVelCurve <- matrix(nrow = length(pos), ncol = 2)
 avgVelCurve[,1] <- pos
 avgVelCurve[,2] <- flf(pos, parameter_summary$avg_x0, parameter_summary$avg_vf, parameter_summary$avg_k, parameter_summary$avg_n)
 
-write.csv(avgVelCurve, paste('/Users/ashleyhenry/Desktop/avgVelCurve_pin2.csv'), row.names = F)
+write.csv(avgVelCurve, paste('/Users/ashleyhenry/Desktop/avgVelCurve_Ler.csv'), row.names = F)
 
 ```
 
 ```{r plotVelCurves}
-abcb4pin2 = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_abcb4pin2.csv")
-abcb4 = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_abcb4.csv")
-Col = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_Col.csv")
-pin2 = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_pin2.csv")
+Cvi_vel = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_Cvi.csv")
+Ler_vel = read_csv("/Users/ashleyhenry/Desktop/avgVelCurve_Ler.csv")
 
-abcb4pin2 = abcb4pin2 %>%
+Cvi_vel = Cvi_vel %>%
   rename(
     "Pos" = V1,
-    "abcb4pin2" = V2
+    "Cvi_vel" = V2
   )
 
-abcb4 = abcb4 %>%
+Ler_vel = Ler_vel %>%
   rename(
     "Pos" = V1,
-    "abcb4" = V2
+    "Ler_vel" = V2
   )
 
-Col = Col %>%
-  rename(
-    "Pos" = V1,
-    "Col" = V2
-  )
-
-pin2 = pin2 %>%
-  rename(
-    "Pos" = V1,
-    "pin2" = V2
-  )
 
 # Change units from px/frame -> mm/hr
-abcb4pin2$Pos = abcb4pin2$Pos/1463
-abcb4pin2$abcb4pin2 = abcb4pin2$abcb4pin2*0.08202
+Cvi_vel$Pos = Cvi_vel$Pos/1463
+Cvi_vel$Cvi_vel = Cvi_vel$Cvi_vel*0.08202
 
-abcb4$Pos = abcb4$Pos/1463
-abcb4$abcb4 = abcb4$abcb4*0.08202
-
-Col$Pos = Col$Pos/1463
-Col$Col = Col$Col*0.08202
-
-pin2$Pos = pin2$Pos/1463
-pin2$pin2 = pin2$pin2*0.08202
+Ler_vel$Pos = Ler_vel$Pos/1463
+Ler_vel$Ler_vel = Ler_vel$Ler_vel*0.08202
 
 # Save new file with correct units (mm & mm/hr) (!!!)
-write.csv(abcb4pin2, paste('/Users/ashleyhenry/Desktop/avgVelCurve_abcb4pin2_CORRECTUNITS.csv'), row.names = F)
-write.csv(abcb4, paste('/Users/ashleyhenry/Desktop/avgVelCurve_abcb4_CORRECTUNITS.csv'), row.names = F)
-write.csv(Col, paste('/Users/ashleyhenry/Desktop/avgVelCurve_Col_CORRECTUNITS.csv'), row.names = F)
-write.csv(pin2, paste('/Users/ashleyhenry/Desktop/avgVelCurve_pin2_CORRECTUNITS.csv'), row.names = F)
+write.csv(Cvi_vel, paste('/Users/ashleyhenry/Desktop/avgVelCurve_Cvi_CORRECTUNITS.csv'), row.names = F)
+write.csv(Ler_vel, paste('/Users/ashleyhenry/Desktop/avgVelCurve_Ler_CORRECTUNITS.csv'), row.names = F)
 
 # Add dataset by dataset to make full dataset of Cvi & Ler for 2018 & 2019
-abcb4pin2Abcb4 = merge(abcb4pin2,
-               abcb4,
+CviLer_vel = merge(Cvi_vel,
+               Ler_vel,
                by = "Pos")
-
-abcb4pin2Abcb4Col = merge(Col,
-               abcb4pin2Abcb4,
-               by = "Pos")
-
-abcb4pin2Abcb4Colpin2 =  merge(pin2,
-               abcb4pin2Abcb4Col,
-               by = "Pos") 
   
 # Make merged dataset into long format
-# CviLerRIL1234LongFormat = melt(CviLerRIL1234, id.var = "Pos")
-abcb4pin2Abcb4Colpin2LongFormat = melt(abcb4pin2Abcb4Colpin2, id.var = "Pos")
+CviLer_vel_LongFormat = melt(CviLer_vel, id.var = "Pos")
 
-# Graph 2018, 2019 CviLer_longformat data
-ggplot(abcb4pin2Abcb4Colpin2LongFormat, aes(x = Pos, y = value, color = variable)) +
+# Graph data from above^
+ggplot(CviLer_vel_LongFormat, aes(x = Pos, y = value, color = variable)) +
   geom_point() +
   # ylim(0, 3.5) +
   xlab("Position from Quiescent Center (mm)") +
   ylab("Velocity from Root Tip (mm/hr)") +
-  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  # ggtitle("Relative Elemental Growth Rate for Cvi & Ler") +
   theme_bw()
 ```
 
@@ -410,7 +398,7 @@ ggplot(abcb4pin2Abcb4Colpin2LongFormat, aes(x = Pos, y = value, color = variable
 # MANUALLY CHANGE FOR CONDITION/GENOTYPE YOU NEED TO INVESTIGATE
 # Note: 
 # 1 = auxinCvi; 2 = auxinLer; 3 = ctrlCvi; 4 = ctrlLer
-parameters = res[[4]]$summary_table
+parameters = res[[2]]$summary_table
 # parameters = res[[2]]$summary_table
 # parameters = res[[3]]$summary_table
 # parameters = res[[4]]$summary_table
@@ -434,109 +422,76 @@ avgREGRCurve <- matrix(nrow = length(pos), ncol = 2)
 avgREGRCurve[,1] <- pos
 avgREGRCurve[,2] <- REGR(pos, parameter_summary$avg_x0, parameter_summary$avg_vf, parameter_summary$avg_k, parameter_summary$avg_n, 12000)
 
-write.csv(avgREGRCurve, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_CtrlLer.csv'), row.names = F)
+write.csv(avgREGRCurve, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_Ler.csv'), row.names = F)
 
 ```
 
 ```{r plottingPracticeREGRCurves}
-auxinCvi = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_auxinCvi.csv")
-auxinLer = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_auxinLer.csv")
-CtrlCvi = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_CtrlCvi.csv")
-CtrlLer = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_CtrlLer.csv")
+Cvi_REGR = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_Cvi.csv")
+Ler_REGR = read_csv("/Users/ashleyhenry/Desktop/avgREGRCurve_Ler.csv")
 
-auxinCvi = auxinCvi %>%
+Cvi_REGR = Cvi_REGR %>%
   rename(
     "Pos" = V1,
-    "auxinCvi" = V2
+    "Cvi_REGR" = V2
   )
 
-auxinLer = auxinLer %>%
+Ler_REGR = Ler_REGR %>%
   rename(
     "Pos" = V1,
-    "auxinLer" = V2
-  )
-
-CtrlCvi = CtrlCvi %>%
-  rename(
-    "Pos" = V1,
-    "CtrlCvi" = V2
-  )
-
-CtrlLer = CtrlLer %>%
-  rename(
-    "Pos" = V1,
-    "CtrlLer" = V2
+    "Ler_REGR" = V2
   )
 
 # Change units from px/frame -> mm/hr
-auxinCvi$Pos = auxinCvi$Pos/1463
+Cvi_REGR$Pos = Cvi_REGR$Pos/1463
 # abcb4pin2$abcb4pin2 = abcb4pin2$abcb4pin2*0.08202
 
-auxinLer$Pos = auxinLer$Pos/1463
+Ler_REGR$Pos = Ler_REGR$Pos/1463
 # abcb4$abcb4 = abcb4$abcb4*0.08202
 
-CtrlCvi$Pos = CtrlCvi$Pos/1463
-# Col$Col = Col$Col*0.08202
-
-CtrlLer$Pos = CtrlLer$Pos/1463
-# pin2$pin2 = pin2$pin2*0.08202
-
 # Saves data now with correct units of mm and %/hr (!!!)
-write.csv(abcb4pin2, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_abcb4pin2_CORRECTUNITS.csv'), row.names = F)
-write.csv(abcb4, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_abcb4_CORRECTUNITS.csv'), row.names = F)
-write.csv(Col, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_Col_CORRECTUNITS.csv'), row.names = F)
-write.csv(pin2, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_pin2_CORRECTUNITS.csv'), row.names = F)
+write.csv(Cvi_REGR, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_Cvi_CORRECTUNITS.csv'), row.names = F)
+write.csv(Ler_REGR, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_Ler_CORRECTUNITS.csv'), row.names = F)
 
 # Add dataset by dataset to make full dataset of Cvi & Ler for 2018 & 2019
-auxin = merge(auxinLer,
-               auxinCvi,
+CviLer_REGR = merge(Ler_REGR,
+               Cvi_REGR,
                by = "Pos")
 
-auxinCtrlCvi = merge(auxin,
-               CtrlCvi,
-               by = "Pos")
 
-auxinCtrl =  merge(auxinCtrlCvi,
-               CtrlLer,
-               by = "Pos") 
-  
 # Make merged dataset into long format
 # CviLerRIL1234LongFormat = melt(CviLerRIL1234, id.var = "Pos")
-auxinCtrl_LongFormat = melt(auxinCtrl, id.var = "Pos")
+CviLer_REGR_LongFormat = melt(CviLer_REGR, id.var = "Pos")
 
 # Graph 2018, 2019 CviLer_longformat data
-ggplot(auxinCtrl_LongFormat, aes(x = Pos, y = value, color = variable)) +
+ggplot(CviLer_REGR_LongFormat, aes(x = Pos, y = value, color = variable)) +
   geom_point() +
   # ylim(0, 3.5) +
   xlab("Position from Quiescent Center (mm)") +
   ylab("Relative Elemental Growth Rate (%/hr)") +
   # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
   theme_bw()
-
-
-
-
 
 ############### Playing with data on 11.20.2019 ###############
 ######## Making plot of Cvi REGR Curve for proposal ###########
 
-CtrlCvi = CtrlCvi %>%
-  rename(
-    "Pos" = V1,
-    "CtrlCvi" = V2
-  )
-
-# Recalculate px -> mm & miscalculating REGR values to %
-CtrlCvi$Pos = CtrlCvi$Pos/1463
-CtrlCvi$CtrlCvi = CtrlCvi$CtrlCvi*0.08202
-
-ggplot(CtrlCvi, aes(x = Pos, y = CtrlCvi)) +
-  geom_point() +
-  # ylim(0, 3.5) +
-  xlab("Position from Quiescent Center (mm)") +
-  ylab("Relative Elemental Growth Rate (%/hr)") +
-  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
-  theme_bw()
+# CtrlCvi = CtrlCvi %>%
+#   rename(
+#     "Pos" = V1,
+#     "CtrlCvi" = V2
+#   )
+# 
+# # Recalculate px -> mm & miscalculating REGR values to %
+# CtrlCvi$Pos = CtrlCvi$Pos/1463
+# CtrlCvi$CtrlCvi = CtrlCvi$CtrlCvi*0.08202
+# 
+# ggplot(CtrlCvi, aes(x = Pos, y = CtrlCvi)) +
+#   geom_point() +
+#   # ylim(0, 3.5) +
+#   xlab("Position from Quiescent Center (mm)") +
+#   ylab("Relative Elemental Growth Rate (%/hr)") +
+#   # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+#   theme_bw()
 
 ```
 
