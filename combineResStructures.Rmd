@@ -263,12 +263,12 @@ var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_28_AllRILs_CorrectedSampleSize_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
   # group_by(RILs) %>%
-  select(-X, -X.1, -fileName, -mle) %>%
+  select(-X, -mle) %>%
   # log(a,b) b = base for log, else R will calc ln()
   mutate(logK = log(AllRILs_SummaryParameters$k, 10)) %>%
   mutate(logN = log(AllRILs_SummaryParameters$n, 10))
