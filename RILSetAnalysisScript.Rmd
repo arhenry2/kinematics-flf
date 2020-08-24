@@ -12,6 +12,7 @@ output: html_document
 # install.packages("devtools")
 # install.packages("rowr")
 # install.packages("plotly")
+# install.packages("naniar")
 # setwd("/Users/ashleyhenry/")
 devtools::load_all('/Users/ashleyhenry/flf')
 library(flf)
@@ -22,17 +23,25 @@ library(readr)
 library(rowr)
 require(reshape2)
 library(dplyr)
+library(naniar)
 ```
 
 # Script to Analyze RIL Set
 __Note:__ This list is unordered as of 4.9.2020, but will make ordered list to create this script
 
-## Objectives of this script:
-* Outlier testing
-* Parameter statistics
-* Velocity curves
-* Goodness of fit for flf curve
-* REGR curves
+## Script Completions:
+* Loads in all clicking data into a res structure (complicated list of lists)
+* Combines all res structures into one workable dataframe
+* Relabels data as simplified RIL name (not path/filename)
+* Balances out sample size (currently at less than/equal to 8 replicates)
+* Calculates log(k) and log(n)
+* Calculates average, median, st dev, & variance of the parameters for each RIL
+
+## Script to-dos:
+* REpeatable, efficient outlier testing (one-by one version in AnalyzeKinematic[...].Rmd)
+* Velocity curves (calcs pos & vel from parameters)
+* Goodness of fit for flf curve (R^2, optional: show flf on point cloud for each RIL)
+* REGR curves (calc pos & REGR from parameters)
 * 
 
 ```{r load-data, echo=FALSE}
@@ -56,16 +65,45 @@ save(res, file = "res_RILs151-162.RData")
 load("/Users/ashleyhenry/Desktop/Research/Kinematics/RCodeForExperiments/res_CviLer_RILs1-10.RData")
 ```
 
-```{r renaming-data-parameters}
-########## function & for loop written on 30 January 2020 w/ Julian's help ##########
-# Function to separate res structure and rename pathname to filename for column "fileName"
+# Note: The following code chunks are copied from combineResStructures.Rmd
+I copied this here to have one Analysis Script, instead of several scripts doing partial work
+
+```{r Load-Res-Structures}
+# Iteratively loads in all res structures from ~/rildata directory by:
+## Loads RData file into new environment
+## Then extracts res variable
+loadRData <- function(fileName) {
+  #loads an RData file, and returns it
+  e1 = new.env()
+  load(fileName, e1)
+  get("res", e1)
+}
+
+# Load in correct res structure
+load("~/rildata/res_CviLer_RILs1-10.RData")
+
+# Pulls filenames from directory
+fils <- matrix(list.files("~/rildata", pattern = "RData$", full.names = TRUE, recursive = TRUE))
+
+# Loading them into RES structure
+RES <- lapply(fils, loadRData)
+
+# Save all that hard work, yeah
+save(RES, file = "2020_08_23_allresStructures.RData")
+
+load("~/rildata/2020_08_23_allresStructures.RData")
+
+```
+
+```{r Combine-Summary-Tables-of-Res-Structure}
+############## function & for loop written on 30 January 2020 w/ Julian's help #############
+####################### Copied from ParameterInvestigation.Rmd script ######################
+# Function to separate res structure and rename pathname to filename for column "fileName" #
 pathname_to_filename = function(genotype) {
   # Get genotype name from pathname
   genoName = basename(dirname(dirname(toString(genotype$fileName[[1]]))))
-  
   # Create empty matrix of one column and as many rows as there are of res structure
   outnames = matrix(1, nrow(genotype))
-
   # Loops through each row of res
   ## Extracts pathname from each row in the dataframe
   ## Extracts filename from each pathname
@@ -75,31 +113,218 @@ pathname_to_filename = function(genotype) {
     outnames[i] = basename(dirname(namePlay_i))
     print(outnames[i])
   }
-  
   # Replaces pathname column with outnames column
   ## Now the column labeled "fileName" has filename instead of pathname
   genotype[["fileName"]] <- outnames
-  
   # Return genotype summary table and genotype name
   gtype_gname = list(genotype, genoName)
   return(gtype_gname)
 }
 
-# For loop to call "pathname_to_filename" function for each genotype in res
-for (i in 1 : length(res)) {
-  gtype = res[[i]]$summary_table
-  gList = pathname_to_filename(gtype)
-  eval(parse(text = paste0(sprintf("%s = gList[[1]]", gList[[2]]))))
+extractParameters = function(res) {
+  # Create empty dataframe to fill with each RIL's parameters
+  RILParameterSummaryTable = data.frame(matrix(
+                                            ncol = 6, 
+                                            nrow = 0, 
+                                            dimnames = list(NULL, c("fileName", "x0", "vf", "k", "n", "mle"))))
+
+  # for loop to call "pathname_to_filename" function for each genotype in res
+  ## Fills dataframe with all replicates of all RILs' parameter summary tables
+  for (i in 1:length(res)) {
+    gtype = res[[i]]$summary_table
+    gList = pathname_to_filename(gtype)
+    summaryTable = gList[[1]]
+    eval(parse(text = paste0(sprintf("%s = gList[[1]]", gList[[2]]))))
+    RILParameterSummaryTable = rbind(RILParameterSummaryTable, summaryTable)
+  }
+
+  return(RILParameterSummaryTable)
 }
 
-fullData = rbind(Cvi, Ler, RIL1_1, RIL15_2, RIL17, RIL19, RIL4)
-write.csv(fullData, paste('/Users/ashleyhenry/Desktop/fullData.csv'), row.names=F)
+# Uses function above to make summary table for parameters of all RILs
+RILParams = lapply(RES, extractParameters)
+RILParam_concatenated = bind_rows(RILParams)
+# RILParam_concatenated = bind_rows(fileName) 
+## What? Originally filename was RILs (but wouldn't know what RILs is at this point in the code...?)
+
+# Save progress
+save(RILParam_concatenated, file = "2020_08_23_RILsSummaryParameters")
 ```
 
+```{r shorten-fileName-to-be-RILnumbers}
+# This code chunk creates a new column called "RILs" and fills that column with the shortened fileName
+## This allows the RILs to be grouped together and averaged, because now they have the same name to be grouped
+## Note: Revised on 2020-05-27 to add leading zeros before RIL number
 
-```{r NAME}
+# Start with file you just created (^), need to load() then get() to have in environment
+AllRILs_SummaryParameters = load("~/rildata/2020_08_23_RILsSummaryParameters")
+AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
 
+# Makes a column of shortened RIL names by copying the fileName column
+## Make copy of fileName column called RILs
+AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName
 
+# Extracts the "RIL##" from fileName and fills in the "RILs" column
+## This works for RILs, but need to correct for Cvi & Ler
+AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
 
+#############################################################################################
+######################## Use this chunk if need to add leading zeros ########################
+############ Tried on 2020-05-27 & royally ruined everything for the QTLCode.R! #############
+#############################################################################################
+# # Extract only number from RIL##
+# AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+")
+# 
+# # Make numbers numeric instead of characters to use sprintf()
+# AllRILs_SummaryParameters$RILs <- as.numeric(AllRILs_SummaryParameters$RILs)
+# # Use sprintf() to add "RIL_" leadingzeros to 3 digits "# of RIL"
+# AllRILs_SummaryParameters$RILs <- sprintf("RIL%03d", AllRILs_SummaryParameters$RILs)
+# ##### Note: This works for RIL numbers, but messes up with Cvi & Ler
+# 
+# # Replace RIL0NA with NA
+# AllRILs_SummaryParameters$RILs <- str_replace(AllRILs_SummaryParameters$RILs, "RIL0NA", replacement = NA_character_)
+#############################################################################################
+
+# Filter out NAs from the dataframe's RILs column (which are Cvi & Ler)
+## Using string split(), and "--" as the separator
+## Makes that output into a matrix (to index in next line)
+correctNAs = strsplit(AllRILs_SummaryParameters$fileName[is.na(AllRILs_SummaryParameters$RILs)], split = "--", fixed = TRUE)
+correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
+
+# Takes column from above output that contains "Cvi" and "Ler" (this time it's 2nd column, hence correctNAs[,2])
+## Replaces the NAs with "Cvi" and "Ler" strings
+AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correctNAs[,2]
+
+# Remove duplicates RILs 
+## Because the 1st code chunk loads one extra res file (Cvi, Ler & RILs1-10)
+AllRILs_SummaryParameters = AllRILs_SummaryParameters %>% 
+  distinct()
+
+# Save progress in csv file
+write.csv(AllRILs_SummaryParameters, "~/rildata/2020_08_23_AllRILs_SummaryParameters")
+```
+
+```{r sample-size-balancing}
+##### This code chunk: Need to find RILs w/ 8+ samples & randomly reduce that to 8 #####
+
+# Load in data saved from previous code chunk ^
+# Problem: also loads in rownames as 1st column, fix this?
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_SummaryParameters")
+
+# Variable for threshold of replicate numbers, may be used later so code is dynamic
+SAMPLETHRESH = 8
+# Summary table subset that has column for RIL number and column for no. of replicates of that RIL no.
+AllRILs_nParameters = AllRILs_SummaryParameters %>%
+  group_by(RILs) %>%
+  select(-X, -fileName) %>%
+  tally() %>%
+  filter(n >= SAMPLETHRESH)
+
+# Function to make data subset of RILs that have >5 replicates
+drawRILSamples = function(ril){
+
+  # Takes in whole summary table of all RILs
+  rilSample = AllRILs_SummaryParameters %>% 
+    # Only filter out specified RIL replicates
+    ## "ril" in this case is a list of RILs that have >5 replicates (RILs2Sample below)
+    filter(RILs == ril)
+  # saves the RILs that have >8 replicates in data subset called randSample
+  randSample = sample_n(rilSample, SAMPLETHRESH)
+  # function output is data subset in randSample
+  return(randSample)
+}
+
+# Creates list of RILs that are in the AllRILs_nParameters that have >8 replicates
+RILs2Sample = AllRILs_nParameters$RILs
+
+# Uses drawRILSamples function to create data subset of randomly selected RILs from the list of RILs that contained >5 replicates
+subsetwCorrectedSampleSize = lapply(RILs2Sample, drawRILSamples) # right data (maybe?), wrong format
+# Fixed format of data subset with corrected replicate size
+subsetwCorrectedSampleSize = bind_rows(subsetwCorrectedSampleSize) # Ta daaaa
+
+# Now make separate dataframe containing only RILs with <=5 replicates
+# Create list of RILs with okay relicate numbers
+subsetwFineSamples = AllRILs_SummaryParameters %>%
+  group_by(RILs) %>%
+  select(-X, -fileName) %>%
+  tally() %>%
+  filter(n < SAMPLETHRESH)
+
+# Create data subset only containing RILs with correct number of replicates
+## Will be binded with subset of data that just corrected replicate number
+subsetwFineSamples2 = AllRILs_SummaryParameters %>%
+  subset(RILs %in% subsetwFineSamples$RILs)
+
+# The final dataframe containing corrected number of replicates for each RIL
+## Please rename~~~~~~
+AllRILsCorrectedSampleSize = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize) %>%
+  group_by(RILs) %>%
+  select(-X, -fileName)
+
+# Save new dataset with corrected sample size (<= 5 samples) in csv file
+write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 ```
+
+```{r log(Parameter)-stats-by-RIL}
+# This code chunk is to average parameters per RIL to create a table for the input of the R/qtl2 package
+## Uses output from previous code chunk "shorten-fileName-to-be-RILnumbers"
+# Info needed from RILs:
+log() # take log() of all parameters to make data more normal
+mean() # average of that RIL's parameter -> won't use this b/c have non-normal data
+median() # median of that RIL's parameter -> WILL use this b/c have non-normal data
+sd() # st dev of that RIL's parameter
+var() # variance of that RIL's parameter
+tally() # No. of samples for each RIL
+
+# Load in csv with corrected sample size data
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_28_AllRILs_CorrectedSampleSize_SummaryParameters")
+
+# Take log of all parameters to produce more normal data
+AllRILs_logParameters = AllRILs_SummaryParameters %>%
+  # group_by(RILs) %>%
+  select(-X, -X.1, -fileName, -mle) %>%
+  # log(a,b) b = base for log, else R will calc ln()
+  mutate(logK = log(AllRILs_SummaryParameters$k, 10)) %>%
+  mutate(logN = log(AllRILs_SummaryParameters$n, 10))
+
+
+# Use summarise_each and funs() to calculate stats for all parameters
+## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
+## Removed X (rownames created from csv) and fileName column from dataframe
+## Calc'd chosen stat via summarise_each(funs())
+AllRILs_AveragedParameters = AllRILs_logParameters %>% 
+  group_by(RILs) %>% 
+  # select(-X, -X.1, -fileName, -mle) %>%
+  summarise_each(funs(mean))
+
+AllRILs_MedianParameters = AllRILs_logParameters %>% 
+  group_by(RILs) %>% 
+  # select(-X, -X.1, -fileName, -mle) %>%
+  summarise_each(funs(median))
+
+AllRILs_StDevParameters = AllRILs_logParameters %>%
+  group_by(RILs) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
+  summarise_each(funs(sd))
+
+AllRILs_VarianceParameters = AllRILs_logParameters %>%
+  group_by(RILs) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
+  summarise_each(funs(var))
+
+AllRILs_nParameters = AllRILs_logParameters %>%
+  group_by(RILs) %>%
+  # select(-X, -X.1, -fileName, -mle) %>%
+  tally()
+
+# Save all files from above
+write.csv(AllRILs_AveragedParameters, "~/rildata/2020_08_23_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/2020_08_23_AllRILs_MedianParameters.csv")
+write.csv(AllRILs_StDevParameters, "~/rildata/2020_08_23_AllRILs_StDevParameters.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/2020_08_23_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/2020_08_23_AllRILs_nParameters.csv")
+```
+
+# From here, load the csv files into Excel to correctly place the RILs in order
+## There no leading zeros are allowed in QTLCode.R & R won't place them in order without leading zeros...

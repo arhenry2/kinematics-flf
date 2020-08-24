@@ -25,7 +25,7 @@ library(naniar)
 ```
 
 ```{r Load-Res-Structures}
-# Iteratively loads in all res structures from ~/kinematics-flf directory by:
+# Iteratively loads in all res structures from ~/rildata directory by:
 ## Loads RData file into new environment
 ## Then extracts res variable
 loadRData <- function(fileName) {
@@ -35,24 +35,21 @@ loadRData <- function(fileName) {
   get("res", e1)
 }
 
+# Load in correct res structure
+load("~/rildata/res_CviLer_RILs1-10.RData")
+
 # Pulls filenames from directory
 fils <- matrix(list.files("~/rildata", pattern = "RData$", full.names = TRUE, recursive = TRUE))
 
 # Loading them into RES structure
 RES <- lapply(fils, loadRData)
 
-
-########################################################################################
-###################################### Error here ######################################
-################################ "object 'res' not found" ##############################
-########################################################################################
-
-
 # Save all that hard work, yeah
-save(RES, file = "2020_04_29_allresStructures.RData")
+save(RES, file = "2020_08_23_allresStructures.RData")
 
-# Old way of loading in one res strucutre at a time (aka manually)
-## Don't do this, please, or Julian will get, like, really mad
+load("~/rildata/2020_08_23_allresStructures.RData")
+
+# Old way of loading in one res structure manually
 # CviLerRILs1_10 <- load("~/kinematics-flf/res_CviLer_RILs_1-10_1.RData")
 # CviLerRILs1_10 = get(CviLerRILs1_10)
 ```
@@ -107,10 +104,11 @@ extractParameters = function(res) {
 # Uses function above to make summary table for parameters of all RILs
 RILParams = lapply(RES, extractParameters)
 RILParam_concatenated = bind_rows(RILParams)
-RILParam_concatenated = bind_rows(RILS)
+# RILParam_concatenated = bind_rows(fileName) 
+## What? Originally filename was RILs (but wouldn't know what RILs is at this point in the code...?)
 
 # Save progress
-save(RILParam_concatenated, file = "2020_04_29_RILsSummaryParameters")
+save(RILParam_concatenated, file = "2020_08_23_RILsSummaryParameters")
 
 
 #########################################################
@@ -144,7 +142,7 @@ save(RILParameterSummaryTable, file = "RILParameterSummaryTable_CviLerRILs1_10.R
 ## Note: Revised on 2020-05-27 to add leading zeros before RIL number
 
 # Start with file you just created (^), need to load() then get() to have in environment
-AllRILs_SummaryParameters = load("~/rildata/2020_04_29_RILsSummaryParameters")
+AllRILs_SummaryParameters = load("~/rildata/2020_08_23_RILsSummaryParameters")
 AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
 
 # Makes a column of shortened RIL names by copying the fileName column
@@ -182,16 +180,21 @@ correctNAs = matrix(unlist(correctNAs), nrow = length(correctNAs), byrow = T)
 ## Replaces the NAs with "Cvi" and "Ler" strings
 AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correctNAs[,2]
 
+# Remove duplicates RILs 
+## Because the 1st code chunk loads one extra res file (Cvi, Ler & RILs1-10)
+AllRILs_SummaryParameters = AllRILs_SummaryParameters %>% 
+  distinct()
+
 # Save progress in csv file
-write.csv(AllRILs_SummaryParameters, "~/rildata/2020_05_28_AllRILs_SummaryParameters")
+write.csv(AllRILs_SummaryParameters, "~/rildata/2020_08_23_AllRILs_SummaryParameters")
 ```
 
 ```{r sample-size-balancing}
-##### This code chunk: Need to find RILs w/ 6+ samples & randomly reduce that to 5 #####
+##### This code chunk: Need to find RILs w/ 8+ samples & randomly reduce that to 8 #####
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_05_28_AllRILs_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_SummaryParameters")
 
 # Variable for threshold of replicate numbers, may be used later so code is dynamic
 SAMPLETHRESH = 5
@@ -199,8 +202,8 @@ SAMPLETHRESH = 5
 AllRILs_nParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
   select(-X, -fileName) %>%
-  tally() %>%#?
-  filter(n > SAMPLETHRESH)
+  tally() %>%
+  filter(n >= SAMPLETHRESH)
 
 # Function to make data subset of RILs that have >5 replicates
 drawRILSamples = function(ril){
@@ -210,13 +213,13 @@ drawRILSamples = function(ril){
     # Only filter out specified RIL replicates
     ## "ril" in this case is a list of RILs that have >5 replicates (RILs2Sample below)
     filter(RILs == ril)
-  # saves the RILs that have >5 replicates in data subset called randSample
-  randSample = sample_n(rilSample, 5)
+  # saves the RILs that have >8 replicates in data subset called randSample
+  randSample = sample_n(rilSample, SAMPLETHRESH)
   # function output is data subset in randSample
   return(randSample)
 }
 
-# Creates list of RILs that are in the AllRILs_nParameters that have >5 replicates
+# Creates list of RILs that are in the AllRILs_nParameters that have >8 replicates
 RILs2Sample = AllRILs_nParameters$RILs
 
 # Uses drawRILSamples function to create data subset of randomly selected RILs from the list of RILs that contained >5 replicates
@@ -230,7 +233,7 @@ subsetwFineSamples = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
   select(-X, -fileName) %>%
   tally() %>%
-  filter(n <= SAMPLETHRESH)
+  filter(n < SAMPLETHRESH)
 
 # Create data subset only containing RILs with correct number of replicates
 ## Will be binded with subset of data that just corrected replicate number
@@ -239,10 +242,12 @@ subsetwFineSamples2 = AllRILs_SummaryParameters %>%
 
 # The final dataframe containing corrected number of replicates for each RIL
 ## Please rename~~~~~~
-AllRILsCorrectedSampleSize = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize)
+AllRILsCorrectedSampleSize = rbind(subsetwFineSamples2, subsetwCorrectedSampleSize) %>%
+  group_by(RILs) %>%
+  select(-X, -fileName)
 
 # Save new dataset with corrected sample size (<= 5 samples) in csv file
-write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_05_28_AllRILs_CorrectedSampleSize_SummaryParameters")
+write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters")
 
 ```
 
@@ -299,11 +304,11 @@ AllRILs_nParameters = AllRILs_logParameters %>%
   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/2020_05_28_AllRILs_AveragedParameters.csv")
-write.csv(AllRILs_MedianParameters, "~/rildata/2020_05_28_AllRILs_MedianParameters.csv")
-write.csv(AllRILs_StDevParameters, "~/rildata/2020_05_28_AllRILs_StDevParameters.csv")
-write.csv(AllRILs_VarianceParameters, "~/rildata/2020_05_28_AllRILs_VarianceParameters.csv")
-write.csv(AllRILs_nParameters, "~/rildata/2020_05_28_AllRILs_nParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/2020_08_23_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/2020_08_23_AllRILs_MedianParameters.csv")
+write.csv(AllRILs_StDevParameters, "~/rildata/2020_08_23_AllRILs_StDevParameters.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/2020_08_23_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/2020_08_23_AllRILs_nParameters.csv")
 
 ```
 
