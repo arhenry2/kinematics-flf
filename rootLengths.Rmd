@@ -1,0 +1,73 @@
+---
+title: "testingWithNathan"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+### Gets flf package loaded into environment ###
+# install.packages("backports")
+# install.packages("rcmdcheck")
+# install.packages("devtools")
+# install.packages("rowr")
+# install.packages("plotly")
+# install.packages("naniar")
+# setwd("/Users/ashleyhenry/")
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(naniar)
+```
+
+```{r something}
+# Reading in rootLength.csv file from Nathan, add to final avg parameter summary table from RILSetAnalysisScript.Rmd
+## Then divide log(k) by the root length to make new variable to plot on QTL map
+# rootLengths = read_csv("~/Desktop/rootLength.csv") # This has ~1/2 the data of summaryParameters...? So I'll find the root legnths from the data set I have
+
+# Load dataframe that has RIL column, filename, and all replicates' data
+summaryParameters = read_csv("~/rildata/2020_08_23_AllRILs_SummaryParameters.csv")
+
+
+```
+
+
+```{r find-rootLengths}
+# Use summary table to create new column for rootLengths (like you did with "RILs")
+## Chop off the last digit(s) to put in rootLength column
+## Easy, right? hopefully...
+
+summaryParameters$rootLengths <- summaryParameters$fileName
+
+# Plan: get everything after the second _, then get everything before the "--". Now how to do this...??
+summaryParameters$rootLengths <- str_extract(summaryParameters$rootLengths, "_[0-9]*[[.]]*[0-9]*--") # now need to take off _ and -- from beginning & end of line
+summaryParameters$rootLengths <- str_extract(summaryParameters$rootLengths, "\\d[[.]]*\\d*") # works! leaves just the rootLength measurements
+
+
+
+summaryParameters = summaryParameters %>%
+  # mutate(logK = log(AllRILs_SummaryParameters$k, 10)) %>%
+  # mutate(logN = log(AllRILs_SummaryParameters$n, 10))  %>%
+  # mutate(chubbs = logK / as.numeric(rootLengths)) %>%
+  mutate(chubbs = k / as.numeric(rootLengths)) %>%
+  mutate(rootLengthNumbers = as.numeric(rootLengths))
+
+write.csv(summaryParameters, "~/rildata/2020_08_28_rootLengthsAndParameters.csv")
+
+# Average each parameter for all RILs
+summaryParameters = summaryParameters %>% 
+  group_by(RILs) %>% 
+  select(-fileName, -mle) %>%
+  summarise_each(funs(mean))
+
+write.csv(summaryParameters, "~/rildata/2020_08_28_FINALrootLengthsAndParameters.csv")
+
+```
+
+
+
+
