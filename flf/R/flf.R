@@ -188,10 +188,56 @@ fit_flf <- function(inputList){
 #takes file imported from analysis script, fits parameters to data
 #"list" = returns data in sections: "$pos", "$vel", & "$coeffs"
 flf_fit_fromFile <- function(fileName){
+  print("Hello world")
   outList <- flfLoaderfromFile(fileName)
-  coeffs <- fit_flf(outList)
+  # coeffs <- fit_flf(outList) #commented out 9.17.2020
+  coeffs <- tryCatch({
+    print("Starting flf")
+    coeffs <- fit_flf(outList)
+    print(class(coeffs))
+    # print(dim(coeffs))
+    print("Success!")
+    print(class(coeffs$coeffs))
+    print(coeffs$coeffs)
+    print(coeffs)
+  }, warning = function(war) {
+    print("Warning!")
+    # coeffs <- list(NA,NA,NA,NA)
+    # coeffs <- c(NA,NA,NA,NA)
+    # coeffs = list(x0 = NA, vf=NA, k=NA, n=NA)
 
-  list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
+    coeffs = list(x0 = NA, vf=NA, k=NA, n=NA)
+    coeffs = list(coeffs = coeffs, mle = NA)
+
+
+  }, error = function(err) {
+
+    print("Error!")
+
+    #coeffs <- c(NA,NA,NA,NA)
+
+
+    coeffs = list(x0 = NA, vf=NA, k=NA, n=NA)
+    coeffs = list(coeffs = coeffs, mle = NA)
+
+    print(coeffs$coeffs)
+    # coeffs <- list(NA,NA,NA,NA)
+    # coeffs <- c(NA,NA,NA,NA)
+    print("finished 'error section'?")
+  }, finally = {
+    print("Starting finally")
+    # return(coeffs)
+    print("Hell world")
+    ret = list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
+
+  }) # END tryCatch
+  # coeffs <- fit_flf(outList)
+  print("Goodbye world")
+  print(coeffs$coeffs)
+
+  return(ret)
+
+  # list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
 }
 
 ####################################################################################

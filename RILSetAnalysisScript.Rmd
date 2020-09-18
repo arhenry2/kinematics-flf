@@ -27,7 +27,7 @@ library(naniar)
 ```
 
 # Script to Analyze RIL Set
-__Note:__ This list is unordered as of 4.9.2020, but will make ordered list to create this script
+__Note:__ 
 
 ## Script Completions:
 * Loads in all clicking data into a res structure (complicated list of lists)
@@ -49,14 +49,14 @@ __Note:__ This list is unordered as of 4.9.2020, but will make ordered list to c
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
-masterPath <- "/Users/ashleyhenry/Desktop/RILPop_tmp"
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_fromClicking/"
 # masterPath <- "/Users/ashleyhenry/Desktop/UnitTestMasterPath" # unit masterpath for sanity (11.19.2019)
 
 res <- processMasterFolder(masterPath)
 
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "res_RILs151-162.RData")
+save(res, file = "res_2020-09-17_tmpLer.RData")
 
 ```
 
@@ -88,9 +88,9 @@ fils <- matrix(list.files("~/rildata", pattern = "RData$", full.names = TRUE, re
 RES <- lapply(fils, loadRData)
 
 # Save all that hard work, yeah
-save(RES, file = "2020_08_23_allresStructures.RData")
+save(RES, file = "2020_09_16_allresStructures.RData")
 
-load("~/rildata/2020_08_23_allresStructures.RData")
+load("~/rildata/2020_09_16_allresStructures.RData")
 
 ```
 
@@ -144,10 +144,9 @@ extractParameters = function(res) {
 RILParams = lapply(RES, extractParameters)
 RILParam_concatenated = bind_rows(RILParams)
 # RILParam_concatenated = bind_rows(fileName) 
-## What? Originally filename was RILs (but wouldn't know what RILs is at this point in the code...?)
 
 # Save progress
-save(RILParam_concatenated, file = "2020_08_23_RILsSummaryParameters")
+save(RILParam_concatenated, file = "2020_09_16_RILsSummaryParameters.csv")
 ```
 
 ```{r shorten-fileName-to-be-RILnumbers}
@@ -156,7 +155,7 @@ save(RILParam_concatenated, file = "2020_08_23_RILsSummaryParameters")
 ## Note: Revised on 2020-05-27 to add leading zeros before RIL number
 
 # Start with file you just created (^), need to load() then get() to have in environment
-AllRILs_SummaryParameters = load("~/rildata/2020_08_23_RILsSummaryParameters")
+AllRILs_SummaryParameters = load("~/rildata/2020_09_16_RILsSummaryParameters.csv")
 AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
 
 # Makes a column of shortened RIL names by copying the fileName column
@@ -165,11 +164,14 @@ AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName
 
 # Extracts the "RIL##" from fileName and fills in the "RILs" column
 ## This works for RILs, but need to correct for Cvi & Ler
-AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+") 
+AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[A-Z]+[0-9]+")
+AllRILs_SummaryParameters$RILs = str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+")
+
 
 #############################################################################################
 ######################## Use this chunk if need to add leading zeros ########################
 ############ Tried on 2020-05-27 & royally ruined everything for the QTLCode.R! #############
+# Will try again, but will change genotype data to also have leading zeros, prevent more manual labor #
 #############################################################################################
 # # Extract only number from RIL##
 # AllRILs_SummaryParameters$RILs <- str_extract(AllRILs_SummaryParameters$RILs, "[0-9]+")
@@ -199,8 +201,9 @@ AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correct
 AllRILs_SummaryParameters = AllRILs_SummaryParameters %>% 
   distinct()
 
+
 # Save progress in csv file
-write.csv(AllRILs_SummaryParameters, "~/rildata/2020_08_23_AllRILs_SummaryParameters")
+write.csv(AllRILs_SummaryParameters, "~/rildata/2020_09_16_AllRILs_SummaryParameters.csv")
 ```
 
 ```{r sample-size-balancing}
@@ -208,7 +211,9 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/2020_08_23_AllRILs_SummaryParame
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_09_16_AllRILs_SummaryParameters.csv")
+
+
 
 # Variable for threshold of replicate numbers, may be used later so code is dynamic
 SAMPLETHRESH = 8
@@ -261,7 +266,7 @@ AllRILsCorrectedSampleSize = rbind(subsetwFineSamples2, subsetwCorrectedSampleSi
   select(-X, -fileName)
 
 # Save new dataset with corrected sample size (<= 5 samples) in csv file
-write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters")
+write.csv(AllRILsCorrectedSampleSize, "~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters.csv")
 
 ```
 
@@ -277,56 +282,93 @@ var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters")
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters.csv")
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
   # group_by(RILs) %>%
-  select(-X, -X.1, -fileName, -mle) %>%
+  select(-X, -fileName, -mle) %>%
   # log(a,b) b = base for log, else R will calc ln()
   mutate(logK = log(AllRILs_SummaryParameters$k, 10)) %>%
-  mutate(logN = log(AllRILs_SummaryParameters$n, 10))
-
+  mutate(logN = log(AllRILs_SummaryParameters$n, 10)) 
 
 # Use summarise_each and funs() to calculate stats for all parameters
 ## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
 ## Removed X (rownames created from csv) and fileName column from dataframe
 ## Calc'd chosen stat via summarise_each(funs())
 AllRILs_AveragedParameters = AllRILs_logParameters %>% 
-  group_by(RILs) %>% 
+  mutate(RIL = as.numeric(RILs)) %>%
+  group_by(RIL) %>% 
   # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(mean))
 
 AllRILs_MedianParameters = AllRILs_logParameters %>% 
+  mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>% 
   # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(median))
 
 AllRILs_StDevParameters = AllRILs_logParameters %>%
+  mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(sd))
 
 AllRILs_VarianceParameters = AllRILs_logParameters %>%
+  mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(var))
 
 AllRILs_nParameters = AllRILs_logParameters %>%
+  mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # select(-X, -X.1, -fileName, -mle) %>%
   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/2020_08_23_AllRILs_AveragedParameters.csv")
-write.csv(AllRILs_MedianParameters, "~/rildata/2020_08_23_AllRILs_MedianParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/2020_09_16_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/2020_09_16_AllRILs_MedianParameters.csv")
 write.csv(AllRILs_StDevParameters, "~/rildata/2020_08_23_AllRILs_StDevParameters.csv")
 write.csv(AllRILs_VarianceParameters, "~/rildata/2020_08_23_AllRILs_VarianceParameters.csv")
 write.csv(AllRILs_nParameters, "~/rildata/2020_08_23_AllRILs_nParameters.csv")
 ```
 
-# From here, load the csv files into Excel to correctly place the RILs in order
-## There no leading zeros are allowed in QTLCode.R & R won't place them in order without leading zeros...
+```{r brief-outlier-testing}
+# install.packages("outliers")
+library(outliers)
+AllRILs_SummaryParameters = read.csv("~/rildata/2020_09_16_AllRILs_SummaryParameters.csv")
+
+AllRILs_SummaryParameters = AllRILs_SummaryParameters %>%
+  select(-X, -fileName) %>%
+  group_by(RILs)
+
+parametersMelted = melt(AllRILs_SummaryParameters, id.var = "RILs")
+
+# Boxplot to Visualize parameter distribution
+ggplot(data = parametersMelted, aes(x = variable, y = value)) + 
+  geom_boxplot(aes(fill = variable)) +
+  ylab("") +
+  xlab("Parameters") +
+  ggtitle("Distribution of Parameters") +
+  theme_bw() +
+  facet_wrap( ~ variable, scales = "free")
+
+
+
+# Testing chisq test for whole xo column, now need to divide these up by RILs, and then by phenotype
+chisq.out.test(AllRILs_SummaryParameters$x0, variance=var(AllRILs_SummaryParameters$x0), opposite = FALSE) #also run opposite = TRUE for highest value
+
+
+
+
+
+
+```
+
+
+
+
 ```{r fittingVelCurves}
 ### Creates numeric vector for means of the parameters ###
 ### Makes range of y from 0.0 to 3.5 px/hr ###

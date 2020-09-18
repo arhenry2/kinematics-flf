@@ -42,11 +42,21 @@ plot(out.em, ylab = "LOD score")
 plot(out.em, out.mr, chr=c(4, 12), col=c("blue", "red"), ylab="LOD score")
 
 
+# Notes from Ch. 8: 2-Dimensional, 2-QTL scans
+library(qtl)
+data(hyper)
+# calc.genoprob() = calc the conditional QTL genotype prob, given the available marker data
+# Using step = 2.5 as a course grid to increase computational speed (use higher for QTLCode.R?)
+hyper <- calc.genoprob(hyper, step = 2.5, err = 0.001)
+
+# cantwo() = 2-D, 2-QTL scan & default analysis is max likelihood via EM algorithm
+# verbose=FALSE to reduce tracing information
+out2 <- scantwo(hyper, verbose=FALSE)
+# Plot LOD scores from 2-D scan for selected chr
+plot(out2, chr=c(1,4,6,7,15))
 
 
 
-
-# Find out how to get the biggest LOD score
 
 
 

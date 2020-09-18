@@ -42,7 +42,7 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL")
 ## do.call() allows cbind of multiple objects/vectors
   g1 <- do.call("cbind", CT$geno) 
 # Pseudomarkers improve resolution, but need huge memory; step=0 does nothing
-  map <- insert_pseudomarkers(CT$gmap, step = 0, stepwidth = "max")
+  map <- insert_pseudomarkers(CT$gmap, step = 2.5, stepwidth = "max")
   pr <- calc_genoprob(CT, map, error_prob = 0.002)
 # For each individual at each position, find the genotype with the maximum marginal probability
 ## max marginal probability = the max prob of an event irrespective of the outcome of another variable (instead of conditional prob)
@@ -56,34 +56,37 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/CvixLer/Ashley_QTL")
 ## Use when selecting a range of columns, make sure to follow through in scan1perm() below
   # out <- scan1(pr, CT$pheno[,2:6], k_loco, cores = 4) 
 # Use when selecting specific columns
-  out <- scan1(pr, CT$pheno[,c(2,5,6)], k_loco, cores = 4) 
-  
+  out <- scan1(pr, CT$pheno[,c(4)], k_loco, cores = 4) 
+  # Attempting scantwo function, as of 9.9 it's not going well...
+  # out2 <- scantwo(pr, CT$pheno[,c(1:4)], k_loco, verbose=FALSE)
+  # 
+  # plot(out2, chr=c(1:5))
   summary(out)
   
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,c(2,5,6)], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,c(4)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
 
   sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold               
-#ymx <- maxlod(out) # max lod score
+# ymx <- maxlod(out) # max lod score
 
 ##### Finding LOD peaks
   peaks <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
   peaks
 
 ##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = k; lodcolumn 4 = n
-  plot(out, map, lodcolumn = 1, ylim = c(0,4), col = rgb(0, 0, 0, 0.5), main = "QTL Map for Average of vf, log(k), & log(n)") # vf = black
+  plot(out, map, lodcolumn = 1, ylim = c(0,8), col = rgb(0, 0, 0, 0.5), main = "QTL Map for Avg Parameter Data") # vf = black
   plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # log(k) = red
   plot(out, map, lodcolumn = 3, col = rgb(0, 0, 1, 0.5), add = TRUE) # log(n) = blue
-  # plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # n = green
+  plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # n = green
   # plot(out, map, lodcolumn = 5, col = rgb(0.4, 0, 0.6, 0.5), add = TRUE)# log(n) = violet
 
   abline(h = sig[,1], col = rgb(0, 0, 0, 0.5)) # vf = black
   abline(h = sig[,2], col = rgb(1, 0, 0, 0.5)) # log(k) = red
   abline(h = sig[,3], col = rgb(0, 0, 1, 0.5)) # log(n) = blue
-  # abline(h = sig[,4], col = rgb(0, 1, 0, 0.5)) # n = green
+  abline(h = sig[,4], col = rgb(0, 1, 0, 0.5)) # n = green
   # abline(h = sig[,5], col = rgb(0.4, 0, 0.6, 0.5)) # log(n) = violet
   legend("topright", lwd = 3, col = c(rgb(0, 0, 0, 0.5), rgb(1, 0, 0, 0.5), rgb(0, 0, 1, 0.5), rgb(0, 1, 0, 0.5), rgb(0.4, 0, 0.6, 0.5)), colnames(out), bty = "n")
 
