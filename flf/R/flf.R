@@ -168,7 +168,7 @@ fit_flf <- function(inputList){
 
   # mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni)) # Original mle function w/out testing parameters for outliers
 # mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
-  curMaxret = mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
+  curMaxret = mle(ll, start = list(x0 = x0i, vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
 
   list(coeffs = curMaxret, mle = curMax)
   }
@@ -188,52 +188,64 @@ fit_flf <- function(inputList){
 #takes file imported from analysis script, fits parameters to data
 #"list" = returns data in sections: "$pos", "$vel", & "$coeffs"
 flf_fit_fromFile <- function(fileName){
-  print("Hello world")
+  # print("Hello world")
   outList <- flfLoaderfromFile(fileName)
   # coeffs <- fit_flf(outList) #commented out 9.17.2020
   coeffs <- tryCatch({
-    print("Starting flf")
+    print("Starting TryCatch")
     coeffs <- fit_flf(outList)
-    print(class(coeffs))
+    # print(class(coeffs))
     # print(dim(coeffs))
+    # print(class(coeffs$coeffs))
+
+    # print(coeffs$coeffs)
+    # print("Formatting Coeffs")
+    # coeffs = list(x0 = coeffs$x0, vf=coeffs$vf, k=coeffs$k, n=coeffs$n)
+    # coeffs = list(coeffs = coeffs, mle = NA)
+    # print(coeffs)
     print("Success!")
-    print(class(coeffs$coeffs))
-    print(coeffs$coeffs)
-    print(coeffs)
   }, warning = function(war) {
     print("Warning!")
     # coeffs <- list(NA,NA,NA,NA)
     # coeffs <- c(NA,NA,NA,NA)
     # coeffs = list(x0 = NA, vf=NA, k=NA, n=NA)
 
-    coeffs = list(x0 = NA, vf=NA, k=NA, n=NA)
-    coeffs = list(coeffs = coeffs, mle = NA)
+    coef = list(x0 = NA, vf=NA, k=NA, n=NA)
+    coeffs = list(coeffs = coef, mle = NA)
+
+    # EDIT 2020_09_21: find coeff issue!!! (coeffs$coef or whatever...??)
 
 
   }, error = function(err) {
-
     print("Error!")
 
     #coeffs <- c(NA,NA,NA,NA)
 
+    coef = list(x0 = NA, vf=NA, k=NA, n=NA)
+    # coeffs = list(coeffs = coeffs, mle = NA)
+    coeffs = list(coeffs = coef, mle = NA)
 
-    coeffs = list(x0 = NA, vf=NA, k=NA, n=NA)
-    coeffs = list(coeffs = coeffs, mle = NA)
-
+    print("coeffs$coeffs")
     print(coeffs$coeffs)
+
+    print("coeffs$coef")
+    print(coeffs$coef)
+
     # coeffs <- list(NA,NA,NA,NA)
     # coeffs <- c(NA,NA,NA,NA)
-    print("finished 'error section'?")
+    print("End of Error")
   }, finally = {
-    print("Starting finally")
+    print("Starting Finally")
     # return(coeffs)
-    print("Hell world")
-    ret = list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
+
+    # ret = list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
+    ret = list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coef, "mle" = coeffs$mle)
+
 
   }) # END tryCatch
   # coeffs <- fit_flf(outList)
-  print("Goodbye world")
-  print(coeffs$coeffs)
+  print("End of TryCatch")
+  # print(coeffs$coeffs)
 
   return(ret)
 
