@@ -49,18 +49,18 @@ __Note:__
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
-masterPath <- "/Users/ashleyhenry/Desktop/RILPop_WholePopOutliers//"
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_full"
 # masterPath <- "/Users/ashleyhenry/Desktop/UnitTestMasterPath" # unit masterpath for sanity (11.19.2019)
 
-# These 2 lines copied during debugging TryCatch() 9.22.2020
-devtools::load_all('/Users/ashleyhenry/flf')
-library(flf)
+# # These 2 lines copied during debugging TryCatch() 9.22.2020
+# devtools::load_all('/Users/ashleyhenry/flf')
+# library(flf)
 
 res <- processMasterFolder(masterPath)
 
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "res_2020-09-17_tmpLer.RData")
+save(res, file = "~/rildata/rildata_fullDataset/res_RILsExtras.RData")
 
 ```
 
@@ -83,18 +83,23 @@ loadRData <- function(fileName) {
 }
 
 # Load in correct res structure
-load("~/rildata/res_CviLer_RILs1-10.RData")
+load("~/rildata/rildata_fullDataset/res_CviLer_RILs1-10.RData")
 
 # Pulls filenames from directory
-fils <- matrix(list.files("~/rildata", pattern = "RData$", full.names = TRUE, recursive = TRUE))
+fils <- matrix(list.files("~/rildata/rildata_fullDataset", pattern = "RData$", full.names = TRUE, recursive = TRUE))
+
+fils
 
 # Loading them into RES structure
 RES <- lapply(fils, loadRData)
 
 # Save all that hard work, yeah
-save(RES, file = "2020_09_16_allresStructures.RData")
+save(RES, file = "~/rildata/rildata_fullDataset/2020_10_08_allresStructures.RData")
 
-load("~/rildata/2020_09_16_allresStructures.RData")
+load("~/rildata/rildata_fullDataset/2020_10_08_allresStructures.RData")
+
+# Find number of replicates in RES dataset (is it 1640-~25, or 1750?)
+
 
 ```
 
@@ -150,7 +155,7 @@ RILParam_concatenated = bind_rows(RILParams)
 # RILParam_concatenated = bind_rows(fileName) 
 
 # Save progress
-save(RILParam_concatenated, file = "2020_09_16_RILsSummaryParameters.csv")
+save(RILParam_concatenated, file = "~/rildata/rildata_fullDataset/2020_10_08_RILsSummaryParameters.csv")
 ```
 
 ```{r shorten-fileName-to-be-RILnumbers}
@@ -159,7 +164,7 @@ save(RILParam_concatenated, file = "2020_09_16_RILsSummaryParameters.csv")
 ## Note: Revised on 2020-05-27 to add leading zeros before RIL number
 
 # Start with file you just created (^), need to load() then get() to have in environment
-AllRILs_SummaryParameters = load("~/rildata/2020_09_16_RILsSummaryParameters.csv")
+AllRILs_SummaryParameters = load("~/rildata/rildata_fullDataset/2020_10_08_RILsSummaryParameters.csv")
 AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
 
 # Makes a column of shortened RIL names by copying the fileName column
@@ -207,7 +212,7 @@ AllRILs_SummaryParameters = AllRILs_SummaryParameters %>%
 
 
 # Save progress in csv file
-write.csv(AllRILs_SummaryParameters, "~/rildata/2020_09_16_AllRILs_SummaryParameters.csv")
+write.csv(AllRILs_SummaryParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_SummaryParameters.csv")
 ```
 
 ```{r sample-size-balancing}
@@ -215,7 +220,7 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/2020_09_16_AllRILs_SummaryParame
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_09_16_AllRILs_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_08_AllRILs_SummaryParameters.csv")
 
 
 
@@ -225,8 +230,12 @@ SAMPLETHRESH = 8
 AllRILs_nParameters = AllRILs_SummaryParameters %>%
   group_by(RILs) %>%
   select(-X, -fileName) %>%
-  tally() %>%
-  filter(n >= SAMPLETHRESH)
+  tally() #%>%
+  # filter(n >= SAMPLETHRESH)
+
+# Save table with RIL & respective number of samples
+write.csv(AllRILs_nParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_nParameters.csv")
+
 
 # Function to make data subset of RILs that have >5 replicates
 drawRILSamples = function(ril){
@@ -286,7 +295,9 @@ var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters.csv")
+# AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_08_AllRILs_SummaryParameters.csv")
+
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
@@ -294,79 +305,155 @@ AllRILs_logParameters = AllRILs_SummaryParameters %>%
   select(-X, -fileName, -mle) %>%
   # log(a,b) b = base for log, else R will calc ln()
   mutate(logK = log(AllRILs_SummaryParameters$k, 10)) %>%
-  mutate(logN = log(AllRILs_SummaryParameters$n, 10)) 
+  mutate(logN = log(AllRILs_SummaryParameters$n, 10)) #%>%
+  # mutate(RIL = as.numeric(RILs))
 
 # Use summarise_each and funs() to calculate stats for all parameters
 ## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
 ## Removed X (rownames created from csv) and fileName column from dataframe
 ## Calc'd chosen stat via summarise_each(funs())
-AllRILs_AveragedParameters = AllRILs_logParameters %>% 
-  mutate(RIL = as.numeric(RILs)) %>%
-  group_by(RIL) %>% 
-  # select(-X, -X.1, -fileName, -mle) %>%
-  summarise_each(funs(mean))
-
-AllRILs_MedianParameters = AllRILs_logParameters %>% 
-  mutate(RIL = as.numeric(RILs)) %>%
+## PLEASE NOTE: mutate(RIL = as.numeric(RILs)) JUST NAMES THE RILS AS 1-162, WITHOUT RECOGNIZING WHICH RIL ITS COVERING!!!
+### EXAMPLE: RIL10 = RIL2 B/C ITS THE 2ND RIL AFTER RIL1 IN THE "RILs" COLUMN!!! i.e. don't use this, unless you can fix it!
+AllRILs_AveragedParameters = AllRILs_logParameters %>%
+  # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>% 
   # select(-X, -X.1, -fileName, -mle) %>%
-  summarise_each(funs(median))
+  summarise_each(funs(mean)) #%>%
+  
+
+AllRILs_MedianParameters = AllRILs_logParameters %>% 
+  # mutate(RIL = as.numeric(RILs)) %>%
+  group_by(RILs) %>% 
+  # select(-X, -X.1, -fileName, -mle) %>%
+  summarise_each(funs(median)) 
 
 AllRILs_StDevParameters = AllRILs_logParameters %>%
-  mutate(RIL = as.numeric(RILs)) %>%
+  # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # select(-X, -X.1, -fileName, -mle) %>%
-  summarise_each(funs(sd))
+  summarise_each(funs(sd)) 
 
 AllRILs_VarianceParameters = AllRILs_logParameters %>%
-  mutate(RIL = as.numeric(RILs)) %>%
+  # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # select(-X, -X.1, -fileName, -mle) %>%
   summarise_each(funs(var))
 
 AllRILs_nParameters = AllRILs_logParameters %>%
-  mutate(RIL = as.numeric(RILs)) %>%
+  # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # select(-X, -X.1, -fileName, -mle) %>%
   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/2020_09_16_AllRILs_AveragedParameters.csv")
-write.csv(AllRILs_MedianParameters, "~/rildata/2020_09_16_AllRILs_MedianParameters.csv")
-write.csv(AllRILs_StDevParameters, "~/rildata/2020_08_23_AllRILs_StDevParameters.csv")
-write.csv(AllRILs_VarianceParameters, "~/rildata/2020_08_23_AllRILs_VarianceParameters.csv")
-write.csv(AllRILs_nParameters, "~/rildata/2020_08_23_AllRILs_nParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_MedianParameters.csv")
+write.csv(AllRILs_StDevParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_StDevParameters.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_nParameters.csv")
 ```
 
 ```{r brief-outlier-testing}
 # install.packages("outliers")
 library(outliers)
-AllRILs_SummaryParameters = read.csv("~/rildata/2020_09_16_AllRILs_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_08_AllRILs_SummaryParameters.csv")
 
 AllRILs_SummaryParameters = AllRILs_SummaryParameters %>%
   select(-X, -fileName) %>%
   group_by(RILs)
 
-parametersMelted = melt(AllRILs_SummaryParameters, id.var = "RILs")
+parametersMelted = melt(AllRILs_logParameters, id.var = "RILs")
 
 # Boxplot to Visualize parameter distribution
 ggplot(data = parametersMelted, aes(x = variable, y = value)) + 
   geom_boxplot(aes(fill = variable)) +
   ylab("") +
   xlab("Parameters") +
-  ggtitle("Distribution of Parameters") +
+  ggtitle("Distribution of Parameters for Whole RIL Population") +
   theme_bw() +
   facet_wrap( ~ variable, scales = "free")
 
+# Historgram of Parameters (FULL dataset)
+ggplot(AllRILs_logParameters) +
+  aes(x = x0) +
+  geom_histogram(bins = 30L, fill = "#0c4c8a") +
+  theme_minimal()
+
+ggplot(AllRILs_logParameters) +
+  aes(x = vf) +
+  geom_histogram(bins = 30L, fill = "#0c4c8a") +
+  theme_minimal()
+
+ggplot(AllRILs_logParameters) +
+  aes(x = logK) +
+  geom_histogram(bins = 30L, fill = "#0c4c8a") +
+  theme_minimal()
+
+ggplot(AllRILs_logParameters) +
+  aes(x = logN) +
+  geom_histogram(bins = 30L, fill = "#0c4c8a") +
+  theme_minimal()
 
 
-# Testing chisq test for whole xo column, now need to divide these up by RILs, and then by phenotype
-chisq.out.test(AllRILs_SummaryParameters$x0, variance=var(AllRILs_SummaryParameters$x0), opposite = FALSE) #also run opposite = TRUE for highest value
+# Do distribution curves for each parameter in full dataset!
+################# 2020_10_13 #################
+## Overlying histogram & density plots
+x0_wholeRILPop = ggplot(AllRILs_logParameters, aes(x = x0)) + 
+  geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                 binwidth=30,
+                 colour="black", fill="white") +
+  geom_density(alpha=.2, fill="#FF6666") +  # Overlay with transparent density plot
+  geom_vline(aes(xintercept=mean(x0, na.rm=T)), # Ignore NA values for mean
+                 color="red", linetype="dashed", size=1) +
+  ggtitle("Density Plot for x0 for Whole RIL Population") +
+  theme_bw()
+
+vf_wholeRILPop = ggplot(AllRILs_logParameters, aes(x = vf)) + 
+  geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                 binwidth=.3, # Change binwidth to match data (ex: x0 mean is ~300, need binwidth=30)
+                 colour="black", fill="white") +
+  geom_density(alpha=.2, fill="#FF6666") +  # Overlay with transparent density plot
+  geom_vline(aes(xintercept=mean(vf, na.rm=T)), # Ignore NA values for mean
+                 color="red", linetype="dashed", size=1) +
+  ggtitle("Density Plot for vf for Whole RIL Population") +
+  theme_bw()
+
+logK_wholeRILPop = ggplot(AllRILs_logParameters, aes(x = logK)) +
+  geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                 binwidth=0.05,
+                 colour="black", fill="white") +
+  geom_density(alpha=.2, fill="#FF6666") +  # Overlay with transparent density plot
+  geom_vline(aes(xintercept=mean(logK, na.rm=T)), # Ignore NA values for mean
+                 color="red", linetype="dashed", size=1) +
+  ggtitle("Density Plot for logK for Whole RIL Population") +
+  theme_bw()
+
+logN_wholeRILPop = ggplot(AllRILs_logParameters, aes(x = logN)) + 
+  geom_histogram(aes(y=..density..),      # Histogram with density instead of count on y-axis
+                 binwidth=0.1,
+                 colour="black", fill="white") +
+  geom_density(alpha=.2, fill="#FF6666") +  # Overlay with transparent density plot
+  geom_vline(aes(xintercept=mean(logN, na.rm=T)), # Ignore NA values for mean
+                 color="red", linetype="dashed", size=1) +
+  ggtitle("Density Plot for logN for Whole RIL Population") +
+  theme_bw()
 
 
 
 
+# Testing outliers using chisq test from the Outliers Package in R
+## Should I divide these up by RILs and then by phenotype?
+chisq.out.test(AllRILs_SummaryParameters$x0, variance=var(AllRILs_SummaryParameters$x0), opposite = FALSE) # FALSE=lowest value
+chisq.out.test(AllRILs_SummaryParameters$x0, variance=var(AllRILs_SummaryParameters$x0), opposite = TRUE) # TRUE=highest value
 
+chisq.out.test(AllRILs_SummaryParameters$vf, variance=var(AllRILs_SummaryParameters$vf), opposite = FALSE) # FALSE=lowest value
+chisq.out.test(AllRILs_SummaryParameters$vf, variance=var(AllRILs_SummaryParameters$vf), opposite = TRUE) # TRUE=highest value
+
+chisq.out.test(AllRILs_SummaryParameters$k, variance=var(AllRILs_SummaryParameters$k), opposite = FALSE) # FALSE=lowest value
+chisq.out.test(AllRILs_SummaryParameters$k, variance=var(AllRILs_SummaryParameters$k), opposite = TRUE) # TRUE=highest value
+
+chisq.out.test(AllRILs_SummaryParameters$n, variance=var(AllRILs_SummaryParameters$n), opposite = FALSE) # FALSE=lowest value
+chisq.out.test(AllRILs_SummaryParameters$n, variance=var(AllRILs_SummaryParameters$n), opposite = TRUE) # TRUE=highest value
 
 ```
 
