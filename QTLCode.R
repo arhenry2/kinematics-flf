@@ -56,7 +56,7 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
 ## Use when selecting a range of columns, make sure to follow through in scan1perm() below
   # out <- scan1(pr, CT$pheno[,2:6], k_loco, cores = 4) 
 # Use when selecting specific columns
-  out <- scan1(pr, CT$pheno[,c(1,2,5,6)], k_loco, cores = 4) 
+  out <- scan1(pr, CT$pheno[,c(1,2)], k_loco, cores = 4) 
   # Attempting scantwo function, as of 9.9 it's not going well...
   # out2 <- scantwo(pr, CT$pheno[,c(1:4)], k_loco, verbose=FALSE)
   # 
@@ -64,7 +64,7 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
   summary(out)
   
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2,5,6)], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
@@ -77,7 +77,8 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
   peaks
 
 ##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = k; lodcolumn 4 = n
-  plot(out, map, lodcolumn = 1, ylim = c(0,8), col = rgb(0, 0, 0, 0.5), main = "QTL Map for Average Parameter Data") # vf = black
+  # plot(out, map, lodcolumn = 1, col = rgb(0, 0, 0, 0.5), main = "QTL Map for Average Parameter Data") # vf = black
+  plot(out, map, lodcolumn = 1, ylim = c(0,6), col = rgb(0, 0, 0, 0.5), main = "QTL Map for PCA Data of Root Widths") # vf = black
   plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # log(k) = red
   plot(out, map, lodcolumn = 3, col = rgb(0, 0, 1, 0.5), add = TRUE) # log(n) = blue
   plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # n = green
@@ -93,6 +94,66 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
 plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
                                       ylim = c(0,7), main = paste0(colnames(out)[2]))
 dev.off()
+
+
+#####################################################################################################
+# Load in geno data & see Landsberg erecta occurrences & pick all lines w/ Ler at Marker 1
+## Note: This only extracts occurrences of L, it doesn't connect the phenotype at that marker location;
+###     I ditched this idea 10-20-2020 when I found how to make pheno v geno plots (below: plot_pxg())
+geno = read.csv("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL/ALFP_geno.csv")
+geno1L = geno %>%
+  select(PVV4) %>%
+  filter(PVV4 == 'L')
+
+#####################################################################################################
+####################################### Try again 2020-10-20 ########################################
+#####################################################################################################
+# Grabs pheno and geno data at a specific marker location
+g <- maxmarg(pr, map, chr=1, pos=0, return_char=TRUE, minprob = 0)
+# Plots the phenotypes and genotype at a marker location
+plot_pxg(g, CT$pheno[,"x0"], ylab="x0", SEmult=NULL) +
+  title(main="Allele effect at Marker PVV4 on Chr 1")
+
+
+
+
+
+
+
+
+
+
+# Trying to read in my data in a "cross" format to use Broman's package better than this code already does...
+mydata <- read.cross(format = c("csvs"), 
+                     dir = "/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL", 
+                     genfile = "ALFP_geno.csv", 
+                     mapfile = "Candace_gmap.csv", 
+                     phefile = "2020_10_20_NATHAN_AllRILs_AveragedParameters.csv", 
+                     na.strings = c("-", "NA", "H"), 
+                     genotypes = c( "L": 1, "C": 2), 
+                     alleles = c("L", "C"))
+
+
+# Example dataset from plotPXG() R info page | 10-20-2020
+data(listeria)
+mname <- find.marker(listeria, 5, 28) # marker D5M357, found by chr & pos (i.e. 5, 28)
+plotPXG(listeria, mname)
+
+plotPXG(CT, "PVV4") # Error in plotPXG(CT, "PVV4") : Input should have class "cross"
+
+# Then plot the averages in the Cvi x Ler plot for that marker
+## See if there's a significant difference here
+## This is Nathan's way of QTL mapping, the simplest of ways
+
+genoMarker1 = rbind(geno1C, geno1L) # just puts the L and C back together...
+
+
+par(mfrow = c(1,2))
+plotPXG(out, "")
+plotPXG(out, "")
+
+
+
 
 #####################################################################################################
 ###### Added by Ashley: Checking the marker regression at markers with the highest LOD scores #######

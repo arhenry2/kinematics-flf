@@ -50,11 +50,6 @@ __Note:__
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
 masterPath <- "/Users/ashleyhenry/Desktop/RILPop_full"
-# masterPath <- "/Users/ashleyhenry/Desktop/UnitTestMasterPath" # unit masterpath for sanity (11.19.2019)
-
-# # These 2 lines copied during debugging TryCatch() 9.22.2020
-# devtools::load_all('/Users/ashleyhenry/flf')
-# library(flf)
 
 res <- processMasterFolder(masterPath)
 
@@ -69,7 +64,7 @@ save(res, file = "~/rildata/rildata_fullDataset/res_RILsExtras.RData")
 load("~/rildata/2020_08_23_allresStructures.RData")
 ```
 
-# Note: The following code chunks are copied from combineResStructures.Rmd, to have one Analysis Script instead of several scripts doing partial work
+# Note: The following code chunks are copied from combineResStructures.Rmd to have one Analysis Script instead of several scripts doing partial work
 
 ```{r Load-Res-Structures}
 # Iteratively loads in all res structures from ~/rildata directory by:
@@ -164,12 +159,20 @@ save(RILParam_concatenated, file = "~/rildata/rildata_fullDataset/2020_10_08_RIL
 ## Note: Revised on 2020-05-27 to add leading zeros before RIL number
 
 # Start with file you just created (^), need to load() then get() to have in environment
-AllRILs_SummaryParameters = load("~/rildata/rildata_fullDataset/2020_10_08_RILsSummaryParameters.csv")
+AllRILs_SummaryParameters = load("~/rildata/rildata_fullDataset/rawRIL.csv")
 AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
+
 
 # Makes a column of shortened RIL names by copying the fileName column
 ## Make copy of fileName column called RILs
 AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$fileName
+
+
+# Added to load in Nathan's version of my data, done on 10-19-2020
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/rawRIL.csv")
+# Added to load in Nathan's version of my data, done on 10-19-2020
+AllRILs_SummaryParameters$RILs <- AllRILs_SummaryParameters$Row
+
 
 # Extracts the "RIL##" from fileName and fills in the "RILs" column
 ## This works for RILs, but need to correct for Cvi & Ler
@@ -212,7 +215,7 @@ AllRILs_SummaryParameters = AllRILs_SummaryParameters %>%
 
 
 # Save progress in csv file
-write.csv(AllRILs_SummaryParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_SummaryParameters.csv")
+write.csv(AllRILs_SummaryParameters, "~/rildata/rildata_fullDataset/2020_10_19_NATHAN_AllRILs_SummaryParameters.csv")
 ```
 
 ```{r sample-size-balancing}
@@ -220,7 +223,7 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/rildata_fullDataset/2020_10_08_A
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
-AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_08_AllRILs_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_19_NATHAN_AllRILs_SummaryParameters.csv")
 
 
 
@@ -296,13 +299,13 @@ tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
 # AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters.csv")
-AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_08_AllRILs_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_19_NATHAN_AllRILs_SummaryParameters.csv")
 
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
   # group_by(RILs) %>%
-  select(-X, -fileName, -mle) %>%
+  # select(-X, -fileName, -mle) %>%
   # log(a,b) b = base for log, else R will calc ln()
   mutate(logK = log(AllRILs_SummaryParameters$k, 10)) %>%
   mutate(logN = log(AllRILs_SummaryParameters$n, 10)) #%>%
@@ -317,9 +320,8 @@ AllRILs_logParameters = AllRILs_SummaryParameters %>%
 AllRILs_AveragedParameters = AllRILs_logParameters %>%
   # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>% 
-  # select(-X, -X.1, -fileName, -mle) %>%
-  summarise_each(funs(mean)) #%>%
-  
+  select(-X, -Row) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
 
 AllRILs_MedianParameters = AllRILs_logParameters %>% 
   # mutate(RIL = as.numeric(RILs)) %>%
@@ -346,7 +348,7 @@ AllRILs_nParameters = AllRILs_logParameters %>%
   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_fullDataset/2020_10_19_NATHAN_AllRILs_AveragedParameters.csv")
 write.csv(AllRILs_MedianParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_MedianParameters.csv")
 write.csv(AllRILs_StDevParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_StDevParameters.csv")
 write.csv(AllRILs_VarianceParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_VarianceParameters.csv")
