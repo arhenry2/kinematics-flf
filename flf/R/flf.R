@@ -69,8 +69,8 @@ processMasterFolder <- function(masterPath){
 #              first list - parameters of that rawData.csv file,
 #              second list - pos values from rawData.csv,
 #              third list - vel values from rawData.csv.
-#            This collection of lists is produced from each
-#            rawData.csv file run
+#              This collection of lists is produced from each
+#              rawData.csv file run
 ##########################################
 processFolder <- function(pathName){
   cdir <- dir(pathName, 'rawData.csv', FALSE, TRUE, TRUE);
@@ -80,9 +80,12 @@ processFolder <- function(pathName){
     print(cdir[e])
     D <- flf_fit_fromFile(cdir[e])
     K <- coef(D$coeffs)
+    # print("About to print K") # printing functions were added 10.30.2020, when pos & vel weren't added to rawData section of res
+    # print(K)
+    # print("Did it print K?")
     tmp <- data.frame(fileName = cdir[e], x0 = K[1], vf = K[2], k = K[3], n = K[4], mle = D$mle)
-    ktmp <- rbind(ktmp,tmp)
-    tmpRawList <- list(fileName = cdir[e], pos = D$pos, vel = D$vel)
+    ktmp <- rbind(ktmp,tmp) # This makes the summary table including filename and parameters
+    tmpRawList <- list(fileName = cdir[e], pos = D$pos, vel = D$vel) # This makes the rawData half of res
     rawData[[e]] <- tmpRawList
   }
   R <- list(summary_table = ktmp, rawData = rawData)
@@ -103,6 +106,8 @@ flfLoaderfromFile <- function(fileName){
   rawData <- read.csv(fileName, header = FALSE)
   pos <- rawData$V1
   vel <- rawData$V2
+  # print(pos) # Added 10.30.2020 to see why pos and vel weren't included in res
+  # print("found rawData.csv")  # Added 10.30.2020 to see why pos and vel weren't included in res
   ret <- list("pos" = pos, "vel" = vel)
   ret
 }
@@ -249,7 +254,8 @@ flf_fit_fromFile <- function(fileName){
   #
   # return(ret)
 
-  # list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
+  # Need below code to gather pos and vel into rawData section of res!
+  list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
 }
 
 ####################################################################################

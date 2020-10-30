@@ -56,7 +56,7 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
 ## Use when selecting a range of columns, make sure to follow through in scan1perm() below
   # out <- scan1(pr, CT$pheno[,2:6], k_loco, cores = 4) 
 # Use when selecting specific columns
-  out <- scan1(pr, CT$pheno[,c(1,2)], k_loco, cores = 4) 
+  out <- scan1(pr, CT$pheno[,c(1,2,6,7)], k_loco, cores = 4) 
   # Attempting scantwo function, as of 9.9 it's not going well...
   # out2 <- scantwo(pr, CT$pheno[,c(1:4)], k_loco, verbose=FALSE)
   # 
@@ -64,7 +64,7 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
   summary(out)
   
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2)], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2,6,7)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
@@ -78,7 +78,7 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
 
 ##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = k; lodcolumn 4 = n
   # plot(out, map, lodcolumn = 1, col = rgb(0, 0, 0, 0.5), main = "QTL Map for Average Parameter Data") # vf = black
-  plot(out, map, lodcolumn = 1, ylim = c(0,6), col = rgb(0, 0, 0, 0.5), main = "QTL Map for PCA Data of Root Widths") # vf = black
+  plot(out, map, lodcolumn = 1, ylim = c(0,8), col = rgb(0, 0, 0, 0.5), main = "QTL Map for ASHLEY Averaged Parameters") # vf = black
   plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # log(k) = red
   plot(out, map, lodcolumn = 3, col = rgb(0, 0, 1, 0.5), add = TRUE) # log(n) = blue
   plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # n = green

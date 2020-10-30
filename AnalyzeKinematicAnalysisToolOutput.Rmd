@@ -231,7 +231,7 @@ for (i in 1:length(res)) {
   matrixEnd = ncol(resultVel) - 1
   for (j in 2:matrixEnd) {
     resultVel[,j] <- as.numeric(resultVel[,j]) * 0.08202 } # conversion from px/frame to mm/hr for all velocity value columns
-  resultVel[,1] = as.numeric(resultVel[,1]) / 1463 # conversion from px to mm for the one position value column
+  resultVel[,1] = as.numeric(resultVel[,1]) / 1500 # conversion from px to mm for the one position value column; 1500px = 1mm
   write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosEvaluatedVel', as.numeric(i), '.csv', sep = ""), row.names = F)
   plot(resultVel[,1], resultVel[,2])
   
@@ -243,7 +243,7 @@ for (i in 1:length(res)) {
   # for (k in 2:matrixEnd) {
     # resultREGR[,j] <- as.numeric(resultREGR[,j]) * 120} # DOESN'T WORK: conversion from px/frame*frame to px/frame*hr (or %/hr) for all velocity value columns
   
-  resultREGR[,1] = as.numeric(resultREGR[,1]) / 1463 # WORKS: conversion from px to mm for the one position value column
+  resultREGR[,1] = as.numeric(resultREGR[,1]) / 1500 # WORKS: conversion from px to mm for the one position value column; 1500px = 1mm
   write.csv(resultREGR, paste('/Users/ashleyhenry/Desktop/PosEvaluatedREGR', as.numeric(i), '.csv', sep = ""), row.names = F)
   plot(resultREGR[,1], resultREGR[,2])
 }
@@ -365,10 +365,10 @@ Ler_vel = Ler_vel %>%
 
 
 # Change units from px/frame -> mm/hr
-Cvi_vel$Pos = Cvi_vel$Pos/1463
+Cvi_vel$Pos = Cvi_vel$Pos/1500
 Cvi_vel$Cvi_vel = Cvi_vel$Cvi_vel*0.08202
 
-Ler_vel$Pos = Ler_vel$Pos/1463
+Ler_vel$Pos = Ler_vel$Pos/1500
 Ler_vel$Ler_vel = Ler_vel$Ler_vel*0.08202
 
 # Save new file with correct units (mm & mm/hr) (!!!)
@@ -443,10 +443,10 @@ Ler_REGR = Ler_REGR %>%
   )
 
 # Change units from px/frame -> mm/hr
-Cvi_REGR$Pos = Cvi_REGR$Pos/1463
+Cvi_REGR$Pos = Cvi_REGR$Pos/1500
 # abcb4pin2$abcb4pin2 = abcb4pin2$abcb4pin2*0.08202
 
-Ler_REGR$Pos = Ler_REGR$Pos/1463
+Ler_REGR$Pos = Ler_REGR$Pos/1500
 # abcb4$abcb4 = abcb4$abcb4*0.08202
 
 # Saves data now with correct units of mm and %/hr (!!!)
@@ -482,7 +482,7 @@ ggplot(CviLer_REGR_LongFormat, aes(x = Pos, y = value, color = variable)) +
 #   )
 # 
 # # Recalculate px -> mm & miscalculating REGR values to %
-# CtrlCvi$Pos = CtrlCvi$Pos/1463
+# CtrlCvi$Pos = CtrlCvi$Pos/1500
 # CtrlCvi$CtrlCvi = CtrlCvi$CtrlCvi*0.08202
 # 
 # ggplot(CtrlCvi, aes(x = Pos, y = CtrlCvi)) +
@@ -529,7 +529,7 @@ LerAUXINCTRL = merge(LerAUXIN,
                    by = "Pos")
 
 LerAUXINCTRL_longformat = melt(LerAUXINCTRL, id.var = "Pos") # %>%
-#   mutate(Pos_mm = Pos / 1463) %>%
+#   mutate(Pos_mm = Pos / 1500) %>%
 #   mutate(value_mmhr = value * 0.08202)
 
 # Graph 2019 Cvi and Ler data [ called "original" dataset i.e. before subsetting]
