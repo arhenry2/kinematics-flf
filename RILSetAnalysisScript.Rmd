@@ -49,16 +49,16 @@ __Note:__
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
-masterPath <- "/Users/ashleyhenry/Desktop/RILPop_full"
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_tmp"
 
-devtools::load_all('/Users/ashleyhenry/flf')
+# devtools::load_all('/Users/ashleyhenry/flf')
 # library(flf)
 
 res <- processMasterFolder(masterPath)
 
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "~/rildata/rildata_fullDataset/res_RILs_full.RData")
+save(res, file = "~/rildata/rildata_fullDataset/2020_10_30_res_RILs_full.RData")
 
 
 ##### Use this to check if correct RILs are associated with correct data!!!
@@ -76,61 +76,39 @@ load("~/rildata/2020_08_23_allresStructures.RData")
 # Note: The following code chunks are copied from combineResStructures.Rmd to have one Analysis Script instead of several scripts doing partial work
 
 ```{r Load-Res-Structures}
+
+######################################################################
+# Note: only use this if you have multiple res structures to combine #
+## Don't need now that I have the full RIL set in one res strcuture ##
+######################################################################
+
 # Iteratively loads in all res structures from ~/rildata directory by:
 ## Loads RData file into new environment
 ## Then extracts res variable
-loadRData <- function(fileName) {
-  #loads an RData file, and returns it
-  e1 = new.env()
-  load(fileName, e1)
-  get("res", e1)
-}
+# loadRData <- function(fileName) {
+#   #loads an RData file, and returns it
+#   e1 = new.env()
+#   load(fileName, e1)
+#   get("res", e1)
+# }
+# 
+# # Load in correct res structure
+# load("~/rildata/rildata_fullDataset/res_RILs_full.RData")
+# 
+# # Pulls filenames from directory
+# fils <- matrix(list.files("~/rildata/rildata_fullDataset", pattern = "RData$", full.names = TRUE, recursive = TRUE))
+# 
+# fils
+# 
+# # Loading them into RES structure
+# RES <- lapply(fils, loadRData)
+# 
+# # Save all that hard work, yeah
+# save(RES, file = "~/rildata/rildata_fullDataset/2020_10_21_allresStructures.RData")
 
-# Load in correct res structure
-load("~/rildata/rildata_fullDataset/res_RILs_full.RData")
-
-# Pulls filenames from directory
-fils <- matrix(list.files("~/rildata/rildata_fullDataset", pattern = "RData$", full.names = TRUE, recursive = TRUE))
-
-fils
-
-# Loading them into RES structure
-RES <- lapply(fils, loadRData)
-
-# Save all that hard work, yeah
-save(RES, file = "~/rildata/rildata_fullDataset/2020_10_21_allresStructures.RData")
 
 
 
-#######################################################
-# Plotting point cloud w/ flf fit line overlaying that #
-#######################################################
-
-#######################################################
-# Saving flf fit for that RIL140_3 > RIL140_003_3.5
-# parameters = res[[2]]$summary_table
-parameters = RES[[1]][[106]]$summary_table
-
-# parameters = res[[2]]$summary_table
-# parameters = res[[3]]$summary_table
-# parameters = res[[4]]$summary_table
-# parameters = res[[5]]$summary_table
-# parameters = res[[6]]$summary_table
-
-# Averages the parameters, then fit velocty values to that pos and avg parameters
-## Table that gives avg and sd for each paramters in that condition/genotype
-parameter_summary = parameters %>%
-  summarize(avg_x0 = mean(parameters$x0),
-            avg_vf = mean(parameters$vf),
-            avg_k = mean(parameters$k),
-            avg_n = mean(parameters$n))
-
-# Matrix that has position values in 1st column and fitted velocity values in 2nd column
-avgVelCurve <- matrix(nrow = length(pos), ncol = 2)
-avgVelCurve[,1] <- pos
-avgVelCurve[,2] <- flf(pos, parameter_summary$avg_x0, parameter_summary$avg_vf, parameter_summary$avg_k, parameter_summary$avg_n)
-
-write.csv(avgVelCurve, paste('/Users/ashleyhenry/Desktop/avgVelCurve_RIL140_3_003_3.5.csv'), row.names = F)
 
 
 

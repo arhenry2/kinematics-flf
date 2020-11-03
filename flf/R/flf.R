@@ -301,12 +301,10 @@ plot_flfDataStructure <- function(flfDataStructure, pos){
 ################ Fitting curves to parameters #################
 ###############################################################
 
-# This was written 2018 (when I was a wee babe) and for analyzing
-## Cvi, Ler, Col, and pin2, abcb4, and abcb4pin2 mutants
+# This was written 2018 (when I was a wee babe)
 # To change dataStructure from res[]:
   # genotype <- #
   # flfDataStructure <- res[[genotype]]
-  # where: 1 = abcb4, 2 = abcb4pin2, 3 = Col, 4 = Cvi, 5 = Ler, 6 = pin2, 7 = RIL1, 8 = RIL2, 9 = RIL3, and 10 = RIL4
   ## Number is the location in res[[]] (created in use_flf.R)
 
   # genotype <- 1
