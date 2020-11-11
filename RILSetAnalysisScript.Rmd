@@ -58,19 +58,15 @@ res <- processMasterFolder(masterPath)
 
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "~/rildata/rildata_fullDataset/2020_10_30_res_RILs_full.RData")
-
-
-##### Use this to check if correct RILs are associated with correct data!!!
-### Implemented this 10-26-2020 b/c Nathan's loaded data and my loaded data of the same RIL set are different...
-# dataCheck = load("~/rildata/rildata_fullDataset/res_RILs_full.RData")
-# dataCheck = get(dataCheck)
+save(res, file = "~/rildata/rildata_fullDataset/2020_11_10_res_RIL1.RData")
 
 ```
 
 ```{r Load_Res_Structure}
 # Loads desired res structure into environment
-load("~/rildata/2020_08_23_allresStructures.RData")
+load("~/rildata/rildata_fullDataset/2020_10_30_res_RILs_full.RData")
+load("~/rildata/rildata_fullDataset/2020_11_2_res_RIL1.RData")
+
 ```
 
 # Note: The following code chunks are copied from combineResStructures.Rmd to have one Analysis Script instead of several scripts doing partial work
@@ -105,13 +101,6 @@ load("~/rildata/2020_08_23_allresStructures.RData")
 # 
 # # Save all that hard work, yeah
 # save(RES, file = "~/rildata/rildata_fullDataset/2020_10_21_allresStructures.RData")
-
-
-
-
-
-
-
 ```
 
 ```{r Combine-Summary-Tables-of-Res-Structure}

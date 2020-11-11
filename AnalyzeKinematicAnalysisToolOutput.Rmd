@@ -398,7 +398,7 @@ ggplot(CviLer_vel_LongFormat, aes(x = Pos, y = value, color = variable)) +
 # MANUALLY CHANGE FOR CONDITION/GENOTYPE YOU NEED TO INVESTIGATE
 # Note: 
 # 1 = auxinCvi; 2 = auxinLer; 3 = ctrlCvi; 4 = ctrlLer
-parameters = res[[2]]$summary_table
+parameters = res[[1]]$summary_table
 # parameters = res[[2]]$summary_table
 # parameters = res[[3]]$summary_table
 # parameters = res[[4]]$summary_table
@@ -422,7 +422,7 @@ avgREGRCurve <- matrix(nrow = length(pos), ncol = 2)
 avgREGRCurve[,1] <- pos
 avgREGRCurve[,2] <- REGR(pos, parameter_summary$avg_x0, parameter_summary$avg_vf, parameter_summary$avg_k, parameter_summary$avg_n, 12000)
 
-write.csv(avgREGRCurve, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_Ler.csv'), row.names = F)
+write.csv(avgREGRCurve, paste('/Users/ashleyhenry/Desktop/avgREGRCurve_Cvi.csv'), row.names = F)
 
 ```
 
@@ -469,7 +469,7 @@ ggplot(CviLer_REGR_LongFormat, aes(x = Pos, y = value, color = variable)) +
   # ylim(0, 3.5) +
   xlab("Position from Quiescent Center (mm)") +
   ylab("Relative Elemental Growth Rate (%/hr)") +
-  # ggtitle("Relative Elemental Growth Rate for Cvi, Ler, and RILs 1 - 4") +
+  ggtitle("Relative Elemental Growth Rate for Cvi & Ler") +
   theme_bw()
 
 ############### Playing with data on 11.20.2019 ###############

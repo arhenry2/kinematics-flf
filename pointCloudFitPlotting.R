@@ -28,10 +28,8 @@ functionName = function(argument, argument, argument){
   # Calculate fitted line from parameters for replicate(s) - calc from summary table^
   # Plot rawData pos & vel
   #   plot fitted line
-
-  
-
 }
+
 #####################################################################################
 ################################# Here on 11.3.2020! ################################
 #####################################################################################
@@ -39,32 +37,113 @@ functionName = function(argument, argument, argument){
 tmp2 <- as.data.frame(res[[1]]$rawData[[i]]) # This makes a dataframe with pos and vel columns! But filename is it's own column...
 # Now use this ^ in a for loop
 
-DataframeToFill = matrix(1, nrow(length(res[[1]]$rawData))) # Error here with nrow()
-outnames = matrix(1, nrow(genotype)) # example code without errors
+rawDataSummaryTable = data.frame(matrix( # Error with nrow(), so wrote 3 rows: filename, pos, vel
+                             ncol = length(res[[1]]$rawData[[1]]),
+                             nrow = 0,
+                             dimnames = list(NULL, c("filename", "pos", "vel"))))
 
-emptyDataframe = data.frame()
-for (i in 1:length(res[[1]]$rawData)){
-  tmp2 <- as.data.frame(res[[1]]$rawData[[i]]) # This makes a dataframe with pos and vel columns! But filename is it's own column...
-  
+for (i in 1:length(res[[1]]$rawData)) {
+  # gtype = res[[i]]$summary_table
+  # summaryTable = gList[[1]]
+  # rawDataSummaryTable <- as.data.frame(res[[1]]$rawData[[i]])
+  rawData <- as.data.frame(res[[1]]$rawData[[i]]) # filename, pos, & vel have columns, how to make filename part of the column name?!
+  rawDataSummaryTable <- cbind(rawData, rawDataSummaryTable) # trying to bind rawData to summary table; won't work b/c dif # of rows
+  # rawDataSummaryTable %>%
+  #   # mutate(res[[1]]$rawData[[i]]$fileName_pos <- res[[1]]$rawData[[i]]$pos) # want the filename to be in the column name
 }
 
+for (i in 1:length(res[[1]]$rawData)){
+  tmp2 <- as.data.frame(res[[1]]$rawData[[i]]) # This makes a dataframe with pos and vel columns! But filename is it's own column...
+}
 
-# - Plot flf fit on these point clouds, because they're quirky
-## - finished this on 11.2.2020 & saved plots to Desktop
-  # RIL1--RIL1_009_2.5--
-  # RIL1--RIL1_010_2--
-  # RILpop--RIL1--RIL1_003_2.5--
+# - Plot flf fit on these point clouds, because they have low MLE values in the SummaryTable
+## RILpop--RIL1--RIL1_004_3-- w/ MLE = 8897.891 - DONE
+## RILpop--RIL135--RIL135_002_5--	w/ MLE = 8440.048 - DONE
+## RIL79_2--RIL79_003_4.5--	w/ MLE = 9982.179		- DONE
+## RILpop--RIL109--RIL109_003_3--	w/ MLE = 5913.303	
+## RILpop--RIL96--RIL96_004_3.5--	w/ MLE = 9018.691
+## RIL96_2--RIL96_005_4.5--	w/ MLE = 7298.717
+## RILpop--RIL139--RIL139_001_3-- w/ MLE = 9377.972	
+## RILpop--RIL144X--RIL144X_003_3--	w/ MLE = 9671.525	
+## RILpop--RIL146_2--RIL146_004_4--	w/ MLE = 7064.311	
+## RILpop--RIL41--RIL41_002_4--	w/ MLE = 6829.046	
 
 # Load in res structure with the full RIL set
-# load("~/rildata/rildata_fullDataset/2020_10_30_res_RILs_full.RData")
-load("~/rildata/rildata_fullDataset/2020_11_2_res_RIL1.RData")
+load("~/rildata/rildata_fullDataset/2020_11_10_res_RIL1.RData")
+
+pos <- seq(0, 2000, 1)
+flfDataStructure = res[[1]]
+sz     <- length(flfDataStructure$summary_table$x0)
+ku     <- matrix(list(), nrow = 4, ncol = sz)
+ku[1,] <- flfDataStructure$summary_table$x0
+ku[2,] <- flfDataStructure$summary_table$vf
+ku[3,] <- flfDataStructure$summary_table$k
+ku[4,] <- flfDataStructure$summary_table$n
+
+# Store pos at 1st row then loop through replicates and get fitted values
+Gout <- matrix(list(), nrow = length(pos), ncol = sz)
+# Gout[,1] <- pos
+
+# for (i in 1:length(res[[1]]$rawData)){
+  # print(res[[1]]$rawData[[i]]$fileName) # works
+  for (n in 1:sz) {
+    Gout[,n] <- flf(pos, ku[[1,n]], ku[[2,n]], ku[[3,n]], ku[[4,n]])
+    plot(res[[1]]$rawData[[n]]$pos, res[[1]]$rawData[[n]]$vel,
+         main = paste(res[[1]]$rawData[[n]]$fileName),
+         xlab = "Pos (px)",
+         ylab = paste("Vel for ", n)) # works
+    lines(pos, Gout[,n],
+          col = "blue")
+  }  
+# }
+###############################################################
+######### Ground Truth Parameters | 10 November 2020 ##########
+###############################################################
+# Need to find make a ground truth & see if it stays that way!
+## Pick parameters & make fitted line - done
+## Add noise to this fitted line to make a point cloud
+## See if you can get the same parameters from that point cloud
+gTruth = c(x0 = 658.9043, vf = 1.0581177, k = 0.014531372, n = 2.9281828)
+# ground truth parameters from RIL1_1/RIL1--RIL1_003_4--!!!
+pos <- seq(0, 2000, 1) # pos values for ground truth parameters
+fittedVel = flf(pos, 658.9043,	1.0581177,	0.014531372,	2.9281828) # fitted vel values for ground truth parameters
+gTruthFitted = cbind(pos, fittedVel) # makes matrix of pos & fitted vel values for g truth parameters
+gTruthFitted = data.frame(gTruthFitted) # forces the matrix to be a dataframe
+plot(pos, fittedVel, main = "Ground Truth flf", xlab = "Position (px)", ylab = "Vel (px/frame)")
+ggplot(gTruthFitted, aes(x = pos)) + # See if ggplot makes the fitted line look different, update: it doesn't
+  geom_point(aes(y = fittedVel)) +
+  ggtitle("GGplot Version") +
+  theme_bw()
+
+# Fit without noise:
+write.csv(gTruthFitted, file = "~/Desktop/RILPop_tmp/RIL1_1/rawData.csv")
+
+# Now that I have a fitted line, I need to add noise to the fitted line to make a point cloud
+## Then I can pull the parameters from that point cloud & see if they're the same as my gTruth parameters
+# Function below taken from flf.R, line 387
+## Creates noise to make point cloud? - check if this is true (11.11.2020 at 12:00pm)
+sim <- function(x,sx,sv,x0,vf,k,n){
+  vel <-flf(x,x0,vf,k,n)
+  nx <- rnorm(length(x), 0, sx) #rnorm gives numbers (mean of 0) to add/subtract (displacement) from real x values to make noise
+  nv <- rnorm(length(x), 0, sv) # " w/ y values
+  vel <- vel+nv
+  pos <- x+nx
+  plot(vel~pos)
+  list("V0" = x, "V1" = vel)
+}
+
+sx = sd(pos)
+sv = sd(fittedVel)
+sim(pos, sx, sv, 658.9043,	1.0581177,	0.014531372,	2.9281828)
+
+
 
 # only saves parameters, need to read.csv the rawData.csv from that folder
-posVel = read.csv("~/Desktop/RILPop_full/RIL1_1/RIL1--RIL1_009_2.5--/rawData.csv")
+posVel = read.csv("/Users/ashleyhenry/Desktop/RILPop_full/RIL109_1/RILpop--RIL109--RIL109_003_3--/rawData.csv")
 posVel = posVel %>%
   rename(
-    pos = X10.046,
-    vel = X0
+    pos = X10.133,
+    vel = X.0
   )
 
 
@@ -75,89 +154,105 @@ posVel = posVel %>%
 # - have for loop take fileName from rawData & use that for column name for each replicate - this has been a bitch...
 
 pos <- seq(0, 2000, 1)
+# for (i in 1:length(res)) {
+#   resultVel <- evaluateVelFits(res[[i]], pos) # uses parameters to calc fitted velocity curve
+#   matrixEnd = ncol(resultVel) - 1
+#   for (j in 2:matrixEnd) {
+#     resultVel[,j] <- as.numeric(resultVel[,j]) # fitted vel values
+#     }
+#     
+#   resultVel[,1] = as.numeric(resultVel[,1]) # pos values
+#   # resultVel = data.frame(resultVel)
+#   # colnames(resultVel) <- paste(res[[i]]$rawData[[j]]$fileName)
+#   write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL1_', as.numeric(i), '.csv', sep = ""), row.names = F)
+#   plot(resultVel[,1], resultVel[,2])
+#   
+#   # The code to do the same as above for a REGR curve is located in: AnalyzeKinematicAnalysisToolOutput.R
+# }
 
-for (i in 1:length(res)) {
-  resultVel <- evaluateVelFits(res[[i]], pos) # uses parameters to calc fitted velocity curve, converts px/frame to mm/hr in that function
-  matrixEnd = ncol(resultVel) - 1
-  for (j in 2:matrixEnd) {
-    resultVel[,j] <- as.numeric(resultVel[,j]) # fitted vel values
-    }
-    
-  resultVel[,1] = as.numeric(resultVel[,1]) # pos values
-  # resultVel = data.frame(resultVel)
-  # colnames(resultVel) <- paste(res[[i]]$rawData[[j]]$fileName)
-  write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL1_', as.numeric(i), '.csv', sep = ""), row.names = F)
-  plot(resultVel[,1], resultVel[,2])
-  
-  # The code to do the same as above for a REGR curve is located in: AnalyzeKinematicAnalysisToolOutput.R
+# Trying above code, but for one list of res:
+## This works! Just need to change the res location for the replicates you're looking for! 2020-11-10
+resultVel <- evaluateVelFits(res[[1]], pos)
+matrixEnd = ncol(resultVel) - 1
+for (j in 2:matrixEnd) {
+  resultVel[,j] <- as.numeric(resultVel[,j]) # fitted vel values
 }
-
+resultVel[,1] = as.numeric(resultVel[,1]) # pos values
+write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL109_', as.numeric(i), '.csv', sep = ""), row.names = F)
 
 # Fitted Velocity Values for Fitted Line in Plot
-data1 = read.csv("~/Desktop/PosFittedVel_RIL1_1.csv")
-data2 = read.csv("~/Desktop/PosFittedVel_RIL1_2.csv")
-data1 = data1 %>%
-  mutate(pos = pos/1500) %>%
-  mutate(vel = V10*0.08202)
-
-data1 %>%
-  for (i in 1:length(res)) {
-    matrixEnd = ncol(data1) - 1
-    for (j in 2:matrixEnd) {
-      colnames(data1$V[i]) <- paste(res[[i]]$rawData[[j]]$fileName)
-      rename(
-        pos = V1)
-    }
-  }
-
-
+# data1 = read.csv("~/Desktop/PosFittedVel_RIL1_1.csv")
 # data2 = read.csv("~/Desktop/PosFittedVel_RIL1_2.csv")
+# data2 = data2 %>%
+#   mutate(pos = pos/1500) %>%
+#   mutate(vel = V5*0.08202)
+# 
+# data1 %>%
+#   for (i in 1:length(res)) {
+#     matrixEnd = ncol(data1) - 1
+#     for (j in 2:matrixEnd) {
+#       colnames(data1$V[i]) <- paste(res[[i]]$rawData[[j]]$fileName)
+#       rename(
+#         pos = V1)
+#     }
+#   }
+# 
+# RIL1_fittedVelData = cbind(data1, data2)
 
-RIL1_fittedVelData = cbind(data1, data2)
-
+data = read.csv("~/Desktop/PosFittedVel_RIL109_2.csv")
+data = data %>%
+  mutate(pos = pos/1500) %>%
+  mutate(vel = V4*0.08202)
 
 # Plot point cloud w/ overlaying fitted velocity curve line
 ggplot(posVel, aes(x = pos)) + 
   geom_point(aes(y = vel)) +
-  geom_point(data = data1, aes(x = V1, y = V10), color = "blue") +
-  ggtitle("Velocity Fit for RIL1_009_2.5") +
+  geom_point(data = data, aes(x = V1, y = V4), color = "blue") +
+  ggtitle("Velocity Fit for RIL109_003_3") +
   xlab("Position from Root Tip (px)") +
   ylab("Velocity from Root Tip (px/frame)") +
   xlim(0,1500) +
   theme_bw()
 
+## RILpop--RIL1--RIL1_004_3-- w/ MLE = 8897.891 - DONE
+## RILpop--RIL135--RIL135_002_5--	w/ MLE = 8440.048 - DONE
+## RIL79_2--RIL79_003_4.5--	w/ MLE = 9982.179	- DONE
+## RILpop--RIL109--RIL109_003_3--	w/ MLE = 5913.303	
+## RILpop--RIL96--RIL96_004_3.5--	w/ MLE = 9018.691
+## RIL96_2--RIL96_005_4.5--	w/ MLE = 7298.717
+## RILpop--RIL139--RIL139_001_3-- w/ MLE = 9377.972	
+## RILpop--RIL144X--RIL144X_003_3--	w/ MLE = 9671.525	
+## RILpop--RIL146_2--RIL146_004_4--	w/ MLE = 7064.311	
+## RILpop--RIL41--RIL41_002_4--	w/ MLE = 6829.046
 
 
-########################################################
-# Plotting point cloud w/ flf fit line overlaying that #
-########## Taken from RILSetAnalysisScript.R ###########
-########################################################
+allRILsSummaryTable = read.csv("~/rildata/rildata_fullDataset/2020_10_21_AllRILs_SummaryParameters.csv")
+# dim(allRILsSummaryTable) = 1607 x 8
 
-#######################################################
-# Saving flf fit for that RIL140_3 > RIL140_003_3.5
-# parameters = res[[2]]$summary_table
-parameters = RES[[1]][[106]]$summary_table
 
-# parameters = res[[2]]$summary_table
-# parameters = res[[3]]$summary_table
-# parameters = res[[4]]$summary_table
-# parameters = res[[5]]$summary_table
-# parameters = res[[6]]$summary_table
+allRILsSummaryTable_lowMLE = allRILsSummaryTable %>%
+  filter(mle < 10000)
+# dim(allRILsSummaryTable_lowMLE) = 156 x 8
+# Random replicates I'm plotting to see if actually bad fits:
 
-# Averages the parameters, then fit velocty values to that pos and avg parameters
-## Table that gives avg and sd for each paramters in that condition/genotype
-parameter_summary = parameters %>%
-  summarize(avg_x0 = mean(parameters$x0),
-            avg_vf = mean(parameters$vf),
-            avg_k = mean(parameters$k),
-            avg_n = mean(parameters$n))
+## RILpop--RIL1--RIL1_004_3-- w/ MLE = 8897.891 - DONE
+## RILpop--RIL135--RIL135_002_5--	w/ MLE = 8440.048 - DONE
+## RIL79_2--RIL79_003_4.5--	w/ MLE = 9982.179	- DONE
+## RILpop--RIL109--RIL109_003_3--	w/ MLE = 5913.303	
+## RILpop--RIL96--RIL96_004_3.5--	w/ MLE = 9018.691
+## RIL96_2--RIL96_005_4.5--	w/ MLE = 7298.717
+## RILpop--RIL139--RIL139_001_3-- w/ MLE = 9377.972	
+## RILpop--RIL144X--RIL144X_003_3--	w/ MLE = 9671.525	
+## RILpop--RIL146_2--RIL146_004_4--	w/ MLE = 7064.311	
+## RILpop--RIL41--RIL41_002_4--	w/ MLE = 6829.046
 
-# Matrix that has position values in 1st column and fitted velocity values in 2nd column
-avgVelCurve <- matrix(nrow = length(pos), ncol = 2)
-avgVelCurve[,1] <- pos
-avgVelCurve[,2] <- flf(pos, parameter_summary$avg_x0, parameter_summary$avg_vf, parameter_summary$avg_k, parameter_summary$avg_n)
 
-write.csv(avgVelCurve, paste('/Users/ashleyhenry/Desktop/avgVelCurve_RIL140_3_003_3.5.csv'), row.names = F)
+# 156/1607 = 0.0970753
+## The portion of fits that might be bad = ~10%
+
+
+
+
 
 
 

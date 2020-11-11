@@ -147,7 +147,8 @@ fit_flf <- function(inputList){
   ll <- function(x0,vf,k,n){
     velp <- flf(pos,x0,vf,k,n)
     res <- vel-velp
-    -sum(log(dnorm(res,0,1))) # old way before 3.2.2020
+    # -sum(log(dnorm(res,0,1))) # old way before 3.2.2020
+    -mean(log(dnorm(res,0,1))) # new way on 11.10.2020
     # -sum(log(dnorm(res,0,0.1))) # Tried new one on 3.2.2020
     # -mean(log(dnorm(res,0,1)))
   }
@@ -373,16 +374,16 @@ flf_plotcurve <- function(pos,k,HOLD,RANGY){
 ### Simulates data using...?
 sim <- function(x,sx,sv,x0,vf,k,n){
   vel <-flf(x,x0,vf,k,n)
-  nx <- rnorm(length(x),0,sx) #rnorm gives numbers (mean of 0) to add/subtract (displacement) from real x values to make noise
-  nv <- rnorm(length(x),0,sv) # " w/ y values
+  nx <- rnorm(length(x), 0, sx) #rnorm gives numbers (mean of 0) to add/subtract (displacement) from real x values to make noise
+  nv <- rnorm(length(x), 0, sv) # " w/ y values
   vel <- vel+nv
   pos <- x+nx
   plot(vel~pos)
-  list("V0"=x,"V1"=vel)
+  list("V0" = x, "V1" = vel)
 }
 
 ### Creates simulations for the parameters: x0, vf, k, and n ###
-# p[x] referneces parameters in the array, 1 = x0, 2 = v0, 3 = k, 4 = n.
+# p[x] references parameters in the array, 1 = x0, 2 = v0, 3 = k, 4 = n.
 paraSim <- function(minPara, maxPara){
   n = 1
   p = vector('numeric')
