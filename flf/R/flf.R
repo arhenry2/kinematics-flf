@@ -9,6 +9,43 @@ flf <- function(x,x0,vf,k,n){
 ####################################################################################
 
 ####################################################################################
+########### Fitting with nls() to get parameters that better fit the data ##########
+####################################################################################
+fflf <- function(y, x, ix0, ivf, ik, iN){
+  f <- y ~ (vf)/(1+exp(-k*(x-x0)))^(1/n)
+  m <- nls(f, start = list(x0 = ix0, vf = ivf, k = ik, n = iN))
+  m
+}
+
+# Here on 11.17.2020, nls() fitting works well,
+## Now need to add this to flf.R system to fit all RILs
+
+# Hard coded x and y values:
+# y = c(5, 42, 6, 2, 0)
+# x = c(1, 2, 3, 4, 5)
+# f <- y ~ m*x + b
+# nls(f, start=list(m = 1, b = 1))
+
+# Soft-coded x and y values, with real data:
+posVel = read.csv("~/Desktop/RILPop_tmp/RIL1_1/RIL1--RIL1_005_3--/rawData.csv", header = FALSE)
+posVel = read.csv("~/Desktop/RILPop_tmp/RIL1_1/RIL1--RIL1_001_1.5--/rawData.csv", header = FALSE)
+
+# Best starting values for RIL1_005, using RIL1_001 parameters
+m <- fflf(posVel$V2, posVel$V1, ix0 = 350, ivf = 1.2, ik = 0.008, iN = 0.6)
+# Best starting values for RIL1_001 with guessing parameters
+m <- fflf(posVel$V2, posVel$V1, ix0 = 600, ivf = 1.5, ik = 0.001, iN = 1)
+
+dataFit = data.frame(posVel$V1, predict(m)) %>%
+  rename(pos = posVel.V1,
+         fittedVel = predict.m.)
+
+ggplot(data = posVel, aes(x = posVel$V1)) +
+  geom_point(aes(y = posVel$V2)) +
+  geom_point(data = dataFit, aes(y = fittedVel), color = "blue")
+####################################################################################
+
+
+####################################################################################
 #Flexible Logistic Function: Function from Morris & Silk 1992 equation (Equation 8)
 ####################################################################################
 REGR <- function(x, x0, vf, k, n, scale){
@@ -127,7 +164,7 @@ flfLoaderfromFile <- function(fileName){
 ##########################################
 fit_flf <- function(inputList){
   library(stats4)
-  per = 0.0 # number we're using to define half width of the uniform distributions used for restarts (used in vfH, kH, nH) [Note: used as st dev for rnorm() case]
+  per = 0.1 # number we're using to define half width of the uniform distributions used for restarts (used in vfH, kH, nH) [Note: used as st dev for rnorm() case]
   pos <- inputList$pos
   vel <- inputList$vel
   svel <- sort(vel, decreasing = TRUE) #sort vf from highest to lowest values
@@ -148,7 +185,8 @@ fit_flf <- function(inputList){
     velp <- flf(pos,x0,vf,k,n)
     res <- vel-velp
     # -sum(log(dnorm(res,0,1))) # old way before 3.2.2020
-    -mean(log(dnorm(res,0,1))) # new way on 11.10.2020
+    # -mean(log(dnorm(res,0,1))) # new way on 11.10.2020
+    -log(mean(dnorm(res,0,1))) # new way on 11.12.2020
     # -sum(log(dnorm(res,0,0.1))) # Tried new one on 3.2.2020
     # -mean(log(dnorm(res,0,1)))
   }
@@ -179,7 +217,82 @@ fit_flf <- function(inputList){
   list(coeffs = curMaxret, mle = curMax)
   }
 ####################################################################################
-
+# fit_flf <- function(inputList){
+#   library(stats4)
+#   # number we're using to define half width of the uniform distributions used for restarts (used in vfH, kH, nH)
+#   ## Note: used as st dev for rnorm() below
+#   per = 0.1
+#   pos <- inputList$pos
+#   vel <- inputList$vel
+#   # sort vf from highest to lowest values
+#   svel <- sort(vel, decreasing = TRUE)
+#   # grab highest 100 vf values
+#   vfi <- mean(svel[1:100])
+#   # print(c("mean of highest vf values", vfi))
+#   # find percent of vfi
+#   vfH <- vfi*per
+#   v0i <- mean(vel)
+#   # print(c("mean of vel values", v0i))
+#   x0i <- mean(pos)
+#   # print(c("mean of pos values", x0i))
+#   x0H <- x0i*per
+#   ni <- 1.2
+#   nH <- ni*per
+#   ki <- .008
+#   kH <- ki*per
+#   # added 11.19.2019 to see if number of iterations through mle changes the estimated parameter values
+#   ## default = 100, had at 500 on 11.19.2019
+#   # maxitr = 100
+#   maxitr = 100
+#   # added 11.19.2019 to see if difference between values at interations changes the estimated parameter values
+#   ## default = 1e-8, had at 1e-20 on 11.19.2019
+#   # reltol = 1e-20
+#   reltol = 1e-100
+#   # reN = 5
+#   reN = 5
+#   ll <- function(x0,vf,k,n){
+#     velp <- flf(pos,x0,vf,k,n)
+#     res <- vel-velp # calc's residuals
+#     # -sum(log(dnorm(res,0,1))) # old way before 3.2.2020
+#     -mean(log(dnorm(res, 0, 0.1))) # new way on 11.10.2020, gives probability of your residuals falling into a N dist (assuming N dist.)
+#     # -sum(log(dnorm(res,0,0.1))) # Tried new one on 3.2.2020
+#     # -mean(log(dnorm(res,0,1)))
+#   }
+#   curMax = 0
+#   curMaxret = 0
+#
+#   for (i in 1:reN){
+#     # Define new range for x0i (add noise for where computer will start looking for max likelihood estimate for parameter x0)
+#     x0ii = rnorm(1, mean = x0i, sd = x0H)
+#     # Ditto as above, but for vf
+#     vfii = rnorm(1, mean = vfi, sd = vfH)
+#     # Ditto as above, but for k
+#     kii = rnorm(1, mean = ki, sd = kH)
+#     # Ditto as above, but for n
+#     nii = rnorm(1, mean = ni, sd = nH)
+#     start = list(x0 = x0ii, vf = vfi, k = ki, n = ni)
+#     # print(start)
+#     ret <- mle(ll, start, method = "BFGS", control = list(maxit = maxitr, reltol = reltol))
+#     curV <- ll(coef(ret)[[1]], coef(ret)[[2]], coef(ret)[[3]], coef(ret)[[4]])
+#     if (curV > curMax){
+#       curMax = curV
+#       curMaxret = ret
+#     }
+#
+#     # ret <- mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol))
+#     # ll(coef(ret)[[1]], coef(ret)[[2]], coef(ret)[[3]], coef(ret)[[4]])
+#
+#     # mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni)) # Original mle function w/out testing parameters for outliers
+#     # mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
+#
+#     # New mle function that tests for outliers
+#     curMaxret = mle(ll, start = list(x0 = x0i, vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol))
+#
+#     list(coeffs = curMaxret, mle = curMax)
+#   }
+#   # print(c("coeffs:", curMaxret))
+#   # return(curMaxret)
+# }
 
 ####################################################################################
 # SUMMARY: This function will load calculated fitted parameters from fit_flf.

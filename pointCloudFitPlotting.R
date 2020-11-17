@@ -60,16 +60,9 @@ for (i in 1:length(res[[1]]$rawData)){
 ## RILpop--RIL1--RIL1_004_3-- w/ MLE = 8897.891 - DONE
 ## RILpop--RIL135--RIL135_002_5--	w/ MLE = 8440.048 - DONE
 ## RIL79_2--RIL79_003_4.5--	w/ MLE = 9982.179		- DONE
-## RILpop--RIL109--RIL109_003_3--	w/ MLE = 5913.303	
-## RILpop--RIL96--RIL96_004_3.5--	w/ MLE = 9018.691
-## RIL96_2--RIL96_005_4.5--	w/ MLE = 7298.717
-## RILpop--RIL139--RIL139_001_3-- w/ MLE = 9377.972	
-## RILpop--RIL144X--RIL144X_003_3--	w/ MLE = 9671.525	
-## RILpop--RIL146_2--RIL146_004_4--	w/ MLE = 7064.311	
-## RILpop--RIL41--RIL41_002_4--	w/ MLE = 6829.046	
 
 # Load in res structure with the full RIL set
-load("~/rildata/rildata_fullDataset/2020_11_10_res_RIL1.RData")
+load("~/rildata/rildata_fullDataset/2020_11_12_res_RIL1.RData")
 
 pos <- seq(0, 2000, 1)
 flfDataStructure = res[[1]]
@@ -117,32 +110,16 @@ ggplot(gTruthFitted, aes(x = pos)) + # See if ggplot makes the fitted line look 
 
 # Fit without noise:
 write.csv(gTruthFitted, file = "~/Desktop/RILPop_tmp/RIL1_1/rawData.csv")
-
-# Now that I have a fitted line, I need to add noise to the fitted line to make a point cloud
-## Then I can pull the parameters from that point cloud & see if they're the same as my gTruth parameters
-# Function below taken from flf.R, line 387
-## Creates noise to make point cloud? - check if this is true (11.11.2020 at 12:00pm)
-sim <- function(x,sx,sv,x0,vf,k,n){
-  vel <-flf(x,x0,vf,k,n)
-  nx <- rnorm(length(x), 0, sx) #rnorm gives numbers (mean of 0) to add/subtract (displacement) from real x values to make noise
-  nv <- rnorm(length(x), 0, sv) # " w/ y values
-  vel <- vel+nv
-  pos <- x+nx
-  plot(vel~pos)
-  list("V0" = x, "V1" = vel)
-}
-
-sx = sd(pos)
-sv = sd(fittedVel)
-sim(pos, sx, sv, 658.9043,	1.0581177,	0.014531372,	2.9281828)
-
+###############################################################
+###############################################################
+###############################################################
 
 
 # only saves parameters, need to read.csv the rawData.csv from that folder
-posVel = read.csv("/Users/ashleyhenry/Desktop/RILPop_full/RIL109_1/RILpop--RIL109--RIL109_003_3--/rawData.csv")
+posVel = read.csv("/Users/ashleyhenry/Desktop/RILPop_tmp/RIL1_1/RIL1--RIL1_005_3--/rawData.csv")
 posVel = posVel %>%
   rename(
-    pos = X10.133,
+    pos = X10.055,
     vel = X.0
   )
 
@@ -150,25 +127,22 @@ posVel = posVel %>%
 # Copied from AnalyzeKinematicAnalysisToolOutput.R, edited on 2020_10_27
 ## Creates flf ~fit~ line data, use the vel from these to plot the fit line
 
-# Brain Dump:
-# - have for loop take fileName from rawData & use that for column name for each replicate - this has been a bitch...
+pos <- seq(0, 1500, 1)
+for (i in 1:length(res)) {
+  resultVel <- evaluateVelFits(res[[i]], pos) # uses parameters to calc fitted velocity curve
+  matrixEnd = ncol(resultVel) - 1
+  for (j in 2:matrixEnd) {
+    resultVel[,j] <- as.numeric(resultVel[,j]) # fitted vel values
+    }
 
-pos <- seq(0, 2000, 1)
-# for (i in 1:length(res)) {
-#   resultVel <- evaluateVelFits(res[[i]], pos) # uses parameters to calc fitted velocity curve
-#   matrixEnd = ncol(resultVel) - 1
-#   for (j in 2:matrixEnd) {
-#     resultVel[,j] <- as.numeric(resultVel[,j]) # fitted vel values
-#     }
-#     
-#   resultVel[,1] = as.numeric(resultVel[,1]) # pos values
-#   # resultVel = data.frame(resultVel)
-#   # colnames(resultVel) <- paste(res[[i]]$rawData[[j]]$fileName)
-#   write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL1_', as.numeric(i), '.csv', sep = ""), row.names = F)
-#   plot(resultVel[,1], resultVel[,2])
-#   
-#   # The code to do the same as above for a REGR curve is located in: AnalyzeKinematicAnalysisToolOutput.R
-# }
+  resultVel[,1] = as.numeric(resultVel[,1]) # pos values
+  # resultVel = data.frame(resultVel)
+  # colnames(resultVel) <- paste(res[[i]]$rawData[[j]]$fileName)
+  write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL1_', as.numeric(i), '.csv', sep = ""), row.names = F)
+  plot(resultVel[,1], resultVel[,2])
+
+  # The code to do the same as above for a REGR curve is located in: AnalyzeKinematicAnalysisToolOutput.R
+}
 
 # Trying above code, but for one list of res:
 ## This works! Just need to change the res location for the replicates you're looking for! 2020-11-10
@@ -178,7 +152,7 @@ for (j in 2:matrixEnd) {
   resultVel[,j] <- as.numeric(resultVel[,j]) # fitted vel values
 }
 resultVel[,1] = as.numeric(resultVel[,1]) # pos values
-write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL109_', as.numeric(i), '.csv', sep = ""), row.names = F)
+write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL1.csv', sep = ""), row.names = F)
 
 # Fitted Velocity Values for Fitted Line in Plot
 # data1 = read.csv("~/Desktop/PosFittedVel_RIL1_1.csv")
@@ -199,16 +173,16 @@ write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosFittedVel_RIL109_', as
 # 
 # RIL1_fittedVelData = cbind(data1, data2)
 
-data = read.csv("~/Desktop/PosFittedVel_RIL109_2.csv")
-data = data %>%
-  mutate(pos = pos/1500) %>%
-  mutate(vel = V4*0.08202)
+data = read.csv("/Users/ashleyhenry/Desktop/PosFittedVel_RIL1_1.csv")
+# data = data %>%
+#   mutate(pos = pos/1500) %>%
+#   mutate(vel = V6*0.08202)
 
 # Plot point cloud w/ overlaying fitted velocity curve line
 ggplot(posVel, aes(x = pos)) + 
   geom_point(aes(y = vel)) +
-  geom_point(data = data, aes(x = V1, y = V4), color = "blue") +
-  ggtitle("Velocity Fit for RIL109_003_3") +
+  geom_point(data = data, aes(x = V1, y = V6), color = "blue") +
+  ggtitle("Velocity Fit for RIL1_005_3") +
   xlab("Position from Root Tip (px)") +
   ylab("Velocity from Root Tip (px/frame)") +
   xlim(0,1500) +

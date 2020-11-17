@@ -51,14 +51,14 @@ __Note:__
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
 masterPath <- "/Users/ashleyhenry/Desktop/RILPop_tmp"
 
-# devtools::load_all('/Users/ashleyhenry/flf')
-# library(flf)
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
 
 res <- processMasterFolder(masterPath)
 
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "~/rildata/rildata_fullDataset/2020_11_10_res_RIL1.RData")
+save(res, file = "~/rildata/rildata_fullDataset/2020_11_12_res_RIL1.RData")
 
 ```
 
