@@ -24,6 +24,7 @@ library(rowr)
 require(reshape2)
 library(dplyr)
 library(naniar)
+library(neldermead)
 ```
 
 # Script to Analyze RIL Set
@@ -49,10 +50,7 @@ __Note:__
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
-masterPath <- "/Users/ashleyhenry/Desktop/RILPop_tmp"
-
-devtools::load_all('/Users/ashleyhenry/flf')
-library(flf)
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_full"
 
 res <- processMasterFolder(masterPath)
 

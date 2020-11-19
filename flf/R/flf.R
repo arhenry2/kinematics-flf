@@ -6,43 +6,52 @@
 flf <- function(x,x0,vf,k,n){
   (vf)/(1+exp(-k*(x-x0)))^(1/n)
 }
-####################################################################################
 
 ####################################################################################
-########### Fitting with nls() to get parameters that better fit the data ##########
-####################################################################################
+
+######################################################################################################
+#################### Fitting with nls() to get parameters that better fit the data ###################
+################ As of 11.19.2020 I'm using NelderMead (below), not this nls() fitting ###############
+## nls() was not forgiving on the starting point & wouldn't fit if we didn't have a close start point
+## Which sucks b/c I have ~1600 replicates to guess starting points for, ergo -> NelderMead
+######################################################################################################
 fflf <- function(y, x, ix0, ivf, ik, iN){
   f <- y ~ (vf)/(1+exp(-k*(x-x0)))^(1/n)
-  m <- nls(f, start = list(x0 = ix0, vf = ivf, k = ik, n = iN))
+  con <- nls.control(maxiter = 100, tol = 1e-07, minFactor = 1/5012,
+              printEval = FALSE, warnOnly = TRUE)
+  m <- nls(f, start = list(x0 = ix0, vf = ivf, k = ik, n = iN), control = con) # ik = ik/10, or ik *10 to reset
   m
+
+  s <- summary(m)
+  res = list(x0 = s$coefficients[["x0", "Estimate"]],
+             vf = s$coefficients[["vf", "Estimate"]],
+             k = s$coefficients[["k", "Estimate"]],
+             n = s$coefficients[["n", "Estimate"]],
+             mle = mean(s$residuals))
 }
 
-# Here on 11.17.2020, nls() fitting works well,
-## Now need to add this to flf.R system to fit all RILs
 
-# Hard coded x and y values:
-# y = c(5, 42, 6, 2, 0)
-# x = c(1, 2, 3, 4, 5)
-# f <- y ~ m*x + b
-# nls(f, start=list(m = 1, b = 1))
 
-# Soft-coded x and y values, with real data:
-posVel = read.csv("~/Desktop/RILPop_tmp/RIL1_1/RIL1--RIL1_005_3--/rawData.csv", header = FALSE)
-posVel = read.csv("~/Desktop/RILPop_tmp/RIL1_1/RIL1--RIL1_001_1.5--/rawData.csv", header = FALSE)
+#####################################################
+# fminsearch() now, nls() not great when you don't have correct starting values
 
-# Best starting values for RIL1_005, using RIL1_001 parameters
-m <- fflf(posVel$V2, posVel$V1, ix0 = 350, ivf = 1.2, ik = 0.008, iN = 0.6)
-# Best starting values for RIL1_001 with guessing parameters
-m <- fflf(posVel$V2, posVel$V1, ix0 = 600, ivf = 1.5, ik = 0.001, iN = 1)
-
-dataFit = data.frame(posVel$V1, predict(m)) %>%
-  rename(pos = posVel.V1,
-         fittedVel = predict.m.)
-
-ggplot(data = posVel, aes(x = posVel$V1)) +
-  geom_point(aes(y = posVel$V2)) +
-  geom_point(data = dataFit, aes(y = fittedVel), color = "blue")
-####################################################################################
+# Tried with fminsearch(), which uses neldermead
+fit_NelderMead <- function(y, z, ix0, ivf, ik, iN){
+  # Change the flf formula so that all parameters are held in the vector, x
+  ## Such as: x = c(x0, vf, k, n) (also above)
+  ## This just needs to happen for Nelder-Mead to work, idk...
+  neldermead_flf <- function(x){
+    mean(abs(y - (x[2])/(1+exp(-x[3]*(z-x[1])))^(1/x[4])))
+  }
+  x0 = c(ix0, ivf, ik, iN) # only have ix0 values if run the processMasterFolder() from another script
+  b <- fminsearch(neldermead_flf, x0)
+  b
+  res = list(x0 = b$optbase$xopt[[1,1]],
+             vf = b$optbase$xopt[[2,1]],
+             k = b$optbase$xopt[[3,1]],
+             n = b$optbase$xopt[[4,1]],
+             mle = b$optbase$fopt)
+}
 
 
 ####################################################################################
@@ -116,11 +125,11 @@ processFolder <- function(pathName){
   for (e in 1:length(cdir)){
     print(cdir[e])
     D <- flf_fit_fromFile(cdir[e])
-    K <- coef(D$coeffs)
+    # K <- coef(D$coeffs)
     # print("About to print K") # printing functions were added 10.30.2020, when pos & vel weren't added to rawData section of res
     # print(K)
     # print("Did it print K?")
-    tmp <- data.frame(fileName = cdir[e], x0 = K[1], vf = K[2], k = K[3], n = K[4], mle = D$mle)
+    tmp <- data.frame(fileName = cdir[e], x0 = D$coeffs[1], vf = D$coeffs[2], k = D$coeffs[3], n = D$coeffs[4], mle = D$coeffs[5])
     ktmp <- rbind(ktmp,tmp) # This makes the summary table including filename and parameters
     tmpRawList <- list(fileName = cdir[e], pos = D$pos, vel = D$vel) # This makes the rawData half of res
     rawData[[e]] <- tmpRawList
@@ -212,9 +221,13 @@ fit_flf <- function(inputList){
 
   # mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni)) # Original mle function w/out testing parameters for outliers
 # mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
-  curMaxret = mle(ll, start = list(x0 = x0i, vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
 
-  list(coeffs = curMaxret, mle = curMax)
+  curMaxret = mle(ll, start = list(x0 = x0i, vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
+  # fflf(vel, pos, x0i, vfi, ki, ni)
+  fitted_nm <- fit_NelderMead(vel, pos, x0i, vfi, ki, ni)
+
+  # list(coeffs = curMaxret, mle = curMax)
+  # list(coeffs = curMaxret, mle = curMax)
   }
 ####################################################################################
 # fit_flf <- function(inputList){
@@ -309,7 +322,11 @@ fit_flf <- function(inputList){
 flf_fit_fromFile <- function(fileName){
   # print("Hello world")
   outList <- flfLoaderfromFile(fileName)
-  coeffs <- fit_flf(outList) #commented out 9.17.2020
+  # coeffs <- fit_flf(outList) #commented out 11.17.2020
+  coeffs <- fit_flf(outList) # Updated on 11.17.2020 to use neldermead fitting method instead of fit_flf()
+  #
+  # print("here = 1")
+  # print(class(coeffs))
   # coeffs <- tryCatch({
   #   print("Starting TryCatch")
   #   coeffs <- fit_flf(outList)
@@ -369,7 +386,8 @@ flf_fit_fromFile <- function(fileName){
   # return(ret)
 
   # Need below code to gather pos and vel into rawData section of res!
-  list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
+  # list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
+  list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs)
 }
 
 ####################################################################################
