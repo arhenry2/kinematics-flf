@@ -12,8 +12,8 @@ flf <- function(x,x0,vf,k,n){
 ######################################################################################################
 #################### Fitting with nls() to get parameters that better fit the data ###################
 ################ As of 11.19.2020 I'm using NelderMead (below), not this nls() fitting ###############
-## nls() was not forgiving on the starting point & wouldn't fit if we didn't have a close start point
-## Which sucks b/c I have ~1600 replicates to guess starting points for, ergo -> NelderMead
+# nls() was not forgiving on the starting point & wouldn't fit if we didn't have a close start point #
+##### Which sucks b/c I have ~1600 replicates to guess starting points for, ergo -> NelderMead #####
 ######################################################################################################
 fflf <- function(y, x, ix0, ivf, ik, iN){
   f <- y ~ (vf)/(1+exp(-k*(x-x0)))^(1/n)
@@ -35,22 +35,85 @@ fflf <- function(y, x, ix0, ivf, ik, iN){
 #####################################################
 # fminsearch() now, nls() not great when you don't have correct starting values
 
-# Tried with fminsearch(), which uses neldermead
-fit_NelderMead <- function(y, z, ix0, ivf, ik, iN){
+# Fitting with Nelder-Mead Method
+fit_NelderMead <- function(y, z, ix0, ivf, ik, iN, loopValue){
+  per = 0.9 # want to keep 90% of rawData that have low residuals
+  threshold = 1.5
+  for (i in 1:loopValue){
   # Change the flf formula so that all parameters are held in the vector, x
   ## Such as: x = c(x0, vf, k, n) (also above)
   ## This just needs to happen for Nelder-Mead to work, idk...
-  neldermead_flf <- function(x){
-    mean(abs(y - (x[2])/(1+exp(-x[3]*(z-x[1])))^(1/x[4])))
+    neldermead_flf <- function(x){
+     mean(abs(y - (x[2])/(1+exp(-x[3]*(z-x[1])))^(1/x[4])))
+    }
+    x0 = c(ix0, ivf, ik, iN) # only have ix0 values if run the processMasterFolder() from another script
+    b <- fminsearch(neldermead_flf, x0)
+
+    tmpY <- flf(z, b$optbase$xopt[[1,1]], b$optbase$xopt[[2,1]], b$optbase$xopt[[3,1]], b$optbase$xopt[[4,1]])
+    residY = abs(tmpY - y)
+
+    #####################################################
+    # Cut-Off Rule for point clouds that look like shotgun graphs
+    ## find all residual levels so that the threshold is 1.5
+    id = which(residY < threshold)
+    threshold = threshold*per
+    print(i)
+    # print(threshold)
+    z = z[id]
+    y = y[id]
+    print(length(z))
+    plot(z~y)
+    #####################################################
+
+    #####################################################
+    # Cut-Off Rule for point clouds w/ little to no mat zone
+    ## Added on 12.1.2020
+    # Create dataframe of position and velocity values
+    posVel = data.frame(cbind(z, y))
+    # Sorts posVel dataframe by position values (z)
+    ## - means sort by desending order
+    ## [1:10] keeps the highest 10 values
+    sortedposVel <- posVel[order(-posVel$z),][1:10,]
+
+    # Calc the REGR for the last 10 points (highest position values)
+    final10REGR = REGR(sortedposVel$z,
+                       b$optbase$xopt[[1,1]],
+                       b$optbase$xopt[[2,1]],
+                       b$optbase$xopt[[3,1]],
+                       b$optbase$xopt[[4,1]],
+                       1)
+    # Take the log of the mean of the REGR values for the highest pos values
+    ## Report this out to res Summary Table
+    ## Shows the slope of the fitted line at the highest 10 pos values
+    ### This displays how much maturation zone is included in the point cloud!
+    logMeanFinalPos <- -log(mean(final10REGR))
+    #####################################################
+
+    # #############################################################################
+    # # Percentage Rule to use when want a percentage of the data to be taken out
+    # srt = sort(residY, index.return = TRUE) #returns a list with `sorted values`
+    # #$ix = index of where that position point is in the original pos vector
+    # id = round(length(z) * per)
+    #
+    # z = z[srt$ix[1:id]]
+    # y = y[srt$ix[1:id]]
+    # #############################################################################
+
+
+    ix0 = b$optbase$xopt[[1,1]]
+    ivf = b$optbase$xopt[[2,1]]
+    ik = b$optbase$xopt[[3,1]]
+    iN = b$optbase$xopt[[4,1]]
   }
-  x0 = c(ix0, ivf, ik, iN) # only have ix0 values if run the processMasterFolder() from another script
-  b <- fminsearch(neldermead_flf, x0)
-  b
+
+
+# Below is the "Summary Table" included with the final res structure
   res = list(x0 = b$optbase$xopt[[1,1]],
              vf = b$optbase$xopt[[2,1]],
              k = b$optbase$xopt[[3,1]],
              n = b$optbase$xopt[[4,1]],
-             mle = b$optbase$fopt)
+             meanAbsDiff = b$optbase$fopt, # Means absolute difference
+             matSlope = logMeanFinalPos)
 }
 
 
@@ -77,7 +140,7 @@ REGR <- function(x, x0, vf, k, n, scale){
 ##########################################
 # OUTPUTS: obtained from flf_pairWise
 ##########################################
-processMasterFolder <- function(masterPath){
+processMasterFolder <- function(masterPath, loopValue){
   # this will find the folder names in the masterPath
   cdir <- dir(masterPath, NULL, FALSE, TRUE, FALSE, FALSE, TRUE);
   tmpR = vector('list')
@@ -85,7 +148,7 @@ processMasterFolder <- function(masterPath){
   for (e in 1:length(cdir)) {
     grep(cdir[e], '/')
     # call processFolder
-    resultT = processFolder(cdir[e])
+    resultT = processFolder(cdir[e], loopValue)
     # store the result in a list of results
     tmpR[[e]] <- resultT
   }
@@ -118,18 +181,18 @@ processMasterFolder <- function(masterPath){
 #              This collection of lists is produced from each
 #              rawData.csv file run
 ##########################################
-processFolder <- function(pathName){
+processFolder <- function(pathName, loopValue){
   cdir <- dir(pathName, 'rawData.csv', FALSE, TRUE, TRUE);
   ktmp <- data.frame(fileName = c(), x0 = c(), vf = c(), k = c(), n = c())
   rawData <- c()
   for (e in 1:length(cdir)){
     print(cdir[e])
-    D <- flf_fit_fromFile(cdir[e])
+    D <- flf_fit_fromFile(cdir[e], loopValue)
     # K <- coef(D$coeffs)
     # print("About to print K") # printing functions were added 10.30.2020, when pos & vel weren't added to rawData section of res
     # print(K)
     # print("Did it print K?")
-    tmp <- data.frame(fileName = cdir[e], x0 = D$coeffs[1], vf = D$coeffs[2], k = D$coeffs[3], n = D$coeffs[4], mle = D$coeffs[5])
+    tmp <- data.frame(fileName = cdir[e], x0 = D$coeffs[1], vf = D$coeffs[2], k = D$coeffs[3], n = D$coeffs[4], meanAbsDiff = D$coeffs[5], matSlope = D$coeffs[6])
     ktmp <- rbind(ktmp,tmp) # This makes the summary table including filename and parameters
     tmpRawList <- list(fileName = cdir[e], pos = D$pos, vel = D$vel) # This makes the rawData half of res
     rawData[[e]] <- tmpRawList
@@ -171,7 +234,7 @@ flfLoaderfromFile <- function(fileName){
 ##########################################
 # OUTPUTS: Fitted parameters (x0i, vfi, ki, and ni) from mle function
 ##########################################
-fit_flf <- function(inputList){
+fit_flf <- function(inputList, loopValue){
   library(stats4)
   per = 0.1 # number we're using to define half width of the uniform distributions used for restarts (used in vfH, kH, nH) [Note: used as st dev for rnorm() case]
   pos <- inputList$pos
@@ -199,22 +262,25 @@ fit_flf <- function(inputList){
     # -sum(log(dnorm(res,0,0.1))) # Tried new one on 3.2.2020
     # -mean(log(dnorm(res,0,1)))
   }
-  curMax = 0
-  curMaxret = 0
-  for (i in 1:reN){
-    x0ii = rnorm(1, mean = x0i, sd = x0H) # define new range for x0i (add noise for where computer will start looking for max likelihood estimate for parameter x0)
-    vfii = rnorm(1, mean = vfi, sd = vfH) # define new range for vfi (add noise for where computer will start looking for max likelihood estimate for parameter vf)
-    kii = rnorm(1, mean = ki, sd = kH) # define new range for ki (add noise for where computer will start looking for max likelihood estimate for parameter k)
-    nii = rnorm(1, mean = ni, sd = nH) # define new range for ni (add noise for where computer will start looking for max likelihood estimate for parameter n)
-    start = list(x0 = x0ii, vf = vfi, k = ki, n = ni)
-    ret <- mle(ll, start, method = "BFGS", control = list(maxit = maxitr, reltol = reltol))
-    curV <- ll(coef(ret)[[1]], coef(ret)[[2]], coef(ret)[[3]], coef(ret)[[4]])
-    if (curV > curMax){
-      curMax = curV
-      curMaxret = ret
-    }
-
-  }
+  #################################################################
+  # Removed the for loop on 11.19.2020 when switched to neldermead
+  # curMax = 0
+  # curMaxret = 0
+  # for (i in 1:reN){
+  #   x0ii = rnorm(1, mean = x0i, sd = x0H) # define new range for x0i (add noise for where computer will start looking for max likelihood estimate for parameter x0)
+  #   vfii = rnorm(1, mean = vfi, sd = vfH) # define new range for vfi (add noise for where computer will start looking for max likelihood estimate for parameter vf)
+  #   kii = rnorm(1, mean = ki, sd = kH) # define new range for ki (add noise for where computer will start looking for max likelihood estimate for parameter k)
+  #   nii = rnorm(1, mean = ni, sd = nH) # define new range for ni (add noise for where computer will start looking for max likelihood estimate for parameter n)
+  #   start = list(x0 = x0ii, vf = vfi, k = ki, n = ni)
+  #   ret <- mle(ll, start, method = "BFGS", control = list(maxit = maxitr, reltol = reltol))
+  #   curV <- ll(coef(ret)[[1]], coef(ret)[[2]], coef(ret)[[3]], coef(ret)[[4]])
+  #   if (curV > curMax){
+  #     curMax = curV
+  #     curMaxret = ret
+  #   }
+  #
+  # }
+  #################################################################
 
 # ret <- mle(ll, start = list(x0 = x0i,vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol))
 # ll(coef(ret)[[1]], coef(ret)[[2]], coef(ret)[[3]], coef(ret)[[4]])
@@ -224,7 +290,7 @@ fit_flf <- function(inputList){
 
   curMaxret = mle(ll, start = list(x0 = x0i, vf=vfi, k=ki, n=ni), method = "BFGS", control = list(maxit = maxitr, reltol = reltol)) # New mle function that tests for outliers
   # fflf(vel, pos, x0i, vfi, ki, ni)
-  fitted_nm <- fit_NelderMead(vel, pos, x0i, vfi, ki, ni)
+  fitted_nm <- fit_NelderMead(vel, pos, x0i, vfi, ki, ni, loopValue)
 
   # list(coeffs = curMaxret, mle = curMax)
   # list(coeffs = curMaxret, mle = curMax)
@@ -319,11 +385,11 @@ fit_flf <- function(inputList){
 ##########################################
 #takes file imported from analysis script, fits parameters to data
 #"list" = returns data in sections: "$pos", "$vel", & "$coeffs"
-flf_fit_fromFile <- function(fileName){
+flf_fit_fromFile <- function(fileName, loopValue){
   # print("Hello world")
   outList <- flfLoaderfromFile(fileName)
   # coeffs <- fit_flf(outList) #commented out 11.17.2020
-  coeffs <- fit_flf(outList) # Updated on 11.17.2020 to use neldermead fitting method instead of fit_flf()
+  coeffs <- fit_flf(outList, loopValue) # Updated on 11.17.2020 to use neldermead fitting method instead of fit_flf()
   #
   # print("here = 1")
   # print(class(coeffs))
@@ -387,7 +453,7 @@ flf_fit_fromFile <- function(fileName){
 
   # Need below code to gather pos and vel into rawData section of res!
   # list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs$coeffs, "mle" = coeffs$mle)
-  list("pos" = outList$pos,"vel" = outList$vel,"coeffs" = coeffs)
+  list("pos" = outList$pos, "vel" = outList$vel, "coeffs" = coeffs)
 }
 
 ####################################################################################

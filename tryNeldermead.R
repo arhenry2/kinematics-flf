@@ -11,10 +11,6 @@ library(dplyr)
 library(naniar)
 library(neldermead)
 
-masterPath <- "/Users/ashleyhenry/Desktop/RILPop_full"
-
-res <- processMasterFolder(masterPath)
-
 #############################################################################################################################
 # Below is code taken from flf.R, where I overlaid plots from nls() and Nelder-Mead via fminsearch() to find the best fitting
 ## Saved a few plots on Desktop to show proof of Nelder-Mead fitting better (will put into powerpoint for later)
@@ -22,11 +18,24 @@ res <- processMasterFolder(masterPath)
 #############################################################################################################################
 
 # Load in rawData to try different examples:
-posVel = read.csv("~/Desktop/RILPop_full/RIL150_1/RILpop--RIL150_1--RIL150_001_3--/rawData.csv", header = FALSE)
+posVel = read.csv("~/Desktop/RILPop_tmp/RIL1/RIL1--RIL1_001_1.5--/rawData.csv", header = FALSE)
+
+posVel = posVel %>%
+  rename(pos = V1,
+         vel = V2)
 
 ####################################################################################
 # Nelder-Mead Method
 ####################################################################################
+# Add starting positions for NelderMean fitting method
+pos <- posVel$pos
+vel <- posVel$vel
+ix0 <- mean(pos) # Starting point for x0
+svel <- sort(vel, decreasing = TRUE) # Sort vf from highest to lowest values
+ivf <- mean(svel[1:100]) #Starting point for vf; grabs mean of highest 100 vf values
+ik <- .008 # Starting point for k
+iN <- 1.2 # Starting point for n
+
 # Tried with fminsearch(), which uses neldermead & is more closely related to matlab's fitting
 fw <- function(y, z){
   # Change the flf formula so that all parameters are held in the vector, x
@@ -37,32 +46,32 @@ fw <- function(y, z){
   }
   neldermead_flf
 }
-a <- fw(posVel$V2, posVel$V1) # need to change this with each new rawData
+a <- fw(posVel$vel, posVel$pos) # need to change this with each new rawData
 x0 = c(ix0, ivf, ik, iN) # only have ix0 values if run the processMasterFolder() from another script
 b <- fminsearch(a, x0)
 # b$optbase$xopt = fitted parameters location in the output
-velFit_nm = flf(posVel$V1, b$optbase$xopt[[1,1]], b$optbase$xopt[[2,1]], b$optbase$xopt[[3,1]], b$optbase$xopt[[4,1]])
-dataFit_nm = data.frame(posVel$V1, velFit_nm)
+velFit_nm = flf(posVel$pos, b$optbase$xopt[[1,1]], b$optbase$xopt[[2,1]], b$optbase$xopt[[3,1]], b$optbase$xopt[[4,1]])
+dataFit_nm = data.frame(posVel$pos, velFit_nm)
 
 ####################################################################################
 # nls() Method
 ####################################################################################
-m <- fflf(posVel$V2, posVel$V1, ix0, ivf, ik, iN)
-velFit_nls <- flf(posVel$V1, m$x0, m$vf, m$k, m$n)
-dataFit_nls = data.frame(posVel$V1, velFit_nls) %>%
-  rename(pos = posVel.V1,
+m <- fflf(posVel$vel, posVel$pos, ix0, ivf, ik, iN)
+velFit_nls <- flf(posVel$pos, m$x0, m$vf, m$k, m$n)
+dataFit_nls = data.frame(posVel$pos, velFit_nls) %>%
+  rename(pos = posVel.pos,
          fittedVel = velFit_nls)
 
 ####################################################################################
-# Now Plot!
+# Now Co-Plot!
 ####################################################################################
-ggplot(data = posVel, aes(x = posVel$V1)) +
-  geom_point(aes(y = posVel$V2)) +
+ggplot(data = posVel, aes(x = posVel$pos)) +
+  geom_point(aes(y = posVel$vel)) +
   geom_point(data = dataFit_nls, aes(y = fittedVel), color = "blue") + #nls() method
   geom_point(data = dataFit_nm, aes(y = velFit_nm), color = "red") + #neldermead/fminsearch() method
   ggtitle("Comparing Fitting Methods on Velocity Curve (red = Nelder-Mead, blue = nls)") +
   xlab("Position along Root (px)") +
-  ylim(0, 5) +
+  # ylim(0, 5) +
   ylab("Velocity along Root (px/frame") +
   theme_bw()
 

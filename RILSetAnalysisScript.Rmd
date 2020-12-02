@@ -50,20 +50,120 @@ __Note:__
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "/Users/ashleyhenry/Desktop/controlLer_outlierTests"
-masterPath <- "/Users/ashleyhenry/Desktop/RILPop_full"
+masterPath <- "/Users/ashleyhenry/Desktop/RILPop_tmp"
 
-res <- processMasterFolder(masterPath)
+# devtools::load_all('/Users/ashleyhenry/flf')
+# library(flf)
+
+# 11-23-2020
+# loopValue = number of times I'm taking 90% of the data with the lowest residuals
+# loopValue at ~6 for those with high mle
+res <- processMasterFolder(masterPath, 2)
+
+####################################################################################
+# 11-24-2020, Cases with very low mle value correlated w/ little/no mat zone:
+# give flf parameters & gives REGR growth rate (slope at last 10 points of the fit)
+## IF that slope isn't ~0, then you likely didn't get enough maturation zone
+# Create code to report out the -log(mean(slope[last 10 position points - mat zone])) to the res structure summary table
+## Added this to flf.R on 12.1.2020!
+wholePosVel = read.csv("/Users/ashleyhenry/Desktop/RILPop_tmp/RIL40_1/RILpop--RIL40--RIL40_002_5-- copy/rawData.csv", header = FALSE)
+wholePosVel = wholePosVel %>%
+  rename(
+    pos = V1,
+    vel = V2
+  )
+
+resValue = 1 # only use if have a small res sample!
+# 1 - make flf fit line
+fittedVel = flf(wholePosVel$pos, 
+                res[[resValue]]$summary_table[2]$x0,	
+                res[[resValue]]$summary_table[3]$vf,	
+                res[[resValue]]$summary_table[4]$k,	
+                res[[resValue]]$summary_table[5]$n)
+fittedposVel = cbind(wholePosVel$pos, fittedVel) # makes matrix of pos & fitted vel values for g truth parameters
+fittedposVel = data.frame(fittedposVel) %>% # forces the matrix to be a dataframe
+  rename(pos = V1)
+  
+# RILSetAnalysisScript.Rmd version
+# 2 - take last 10 points on that line
+sortedpos = sort(fittedposVel$pos, decreasing = TRUE)
+srtpos = sortedpos[1:10]
+final10Points = fittedposVel %>%
+  filter(pos >= srtpos)
+
+# Calculate slope for each of these points
+final10REGR = REGR(final10Points$pos, 
+     res[[resValue]]$summary_table[2]$x0,	
+     res[[resValue]]$summary_table[3]$vf,	
+     res[[resValue]]$summary_table[4]$k,	
+     res[[resValue]]$summary_table[5]$n,
+     1)
+# Take -log(mean(x))
+logmeanFinalPos = -log(mean(final10REGR))
+
+-log(0.001995329)
+# From res structure's Summary Table[matSlope]
+# RIL1                - 13.84374
+# RIL40 - no mat zone - 5.734695
+# RIL83               - 13.14896
+# RIL86               - 7.43973
+# RIL99 - no mat zone - 6.216946
+####################################################################################
+
+####################################################################################
+# 1 December 2020
+# Defining the Maturation Zone: Finding points that are within the maturation zone
+## This will help to see if roots with little/no mat zone should be removed from the data
+resValue = 1 # Used RIL40 as example
+pos = c(1:3000)
+# Get REGR fits for example data
+REGRtmp <- REGR(pos, 
+                  res[[resValue]]$summary_table[2]$x0,	
+                  res[[resValue]]$summary_table[3]$vf,	
+                  res[[resValue]]$summary_table[4]$k,	
+                  res[[resValue]]$summary_table[5]$n,
+                  1)
+# Get velocity fits for example data
+fittedVel = flf(pos, 
+                res[[resValue]]$summary_table[2]$x0,	
+                res[[resValue]]$summary_table[3]$vf,	
+                res[[resValue]]$summary_table[4]$k,	
+                res[[resValue]]$summary_table[5]$n)
+
+REGRfit = data.frame(cbind(pos, REGRtmp))
+maxV = max(REGRtmp) # finds Vmax
+per = 0.2 # percentage of area under the curve we want
+maxF = max(fittedVel) # finds vf
+
+velocityFit = data.frame(cbind(pos, fittedVel))
+plot(velocityFit)
+
+ggplot(REGRfit, aes(x = pos)) +
+  geom_point(aes(y = REGRtmp))
+
+# find values that are outside of 20% of the REGR curve, and also greater than 50% of the max velocity values = points in the maturation zone
+k = which((REGRtmp < maxV*per) & (fittedVel > maxF*0.5)) 
+kbool = (REGRtmp < maxV*per) & (fittedVel > maxF*0.5)
+plot(kbool)
+
+
+# 12-01-2020 at 5:00pm w/ Nathan:
+# For every replicate: (AFTER THE FITTING, THIS IS SEPARATE)
+## count number of datapoints fall within the maturation zone
+## what % of points is that?
+
+####################################################################################
+
 
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
-save(res, file = "~/rildata/rildata_fullDataset/2020_11_12_res_RIL1.RData")
+save(res, file = "~/rildata/rildata_realfullDataset/2020_11_19_res_RILPop_full.RData")
 
 ```
 
 ```{r Load_Res_Structure}
 # Loads desired res structure into environment
-load("~/rildata/rildata_fullDataset/2020_10_30_res_RILs_full.RData")
-load("~/rildata/rildata_fullDataset/2020_11_2_res_RIL1.RData")
+load("~/rildata/rildata_realfullDataset/2020_11_19_res_RILPop_full.RData")
 
 ```
 
@@ -72,32 +172,31 @@ load("~/rildata/rildata_fullDataset/2020_11_2_res_RIL1.RData")
 ```{r Load-Res-Structures}
 
 ######################################################################
-# Note: only use this if you have multiple res structures to combine #
-## Don't need now that I have the full RIL set in one res strcuture ##
+# Note: only use this if your whole RILset is alone in the directory #
+#### Else it'll combine all .RData files in the chosen directory! ####
 ######################################################################
 
 # Iteratively loads in all res structures from ~/rildata directory by:
 ## Loads RData file into new environment
 ## Then extracts res variable
-# loadRData <- function(fileName) {
-#   #loads an RData file, and returns it
-#   e1 = new.env()
-#   load(fileName, e1)
-#   get("res", e1)
-# }
+loadRData <- function(fileName) {
+  #loads an RData file, and returns it
+  e1 = new.env()
+  load(fileName, e1)
+  get("res", e1)
+}
 # 
-# # Load in correct res structure
-# load("~/rildata/rildata_fullDataset/res_RILs_full.RData")
-# 
-# # Pulls filenames from directory
-# fils <- matrix(list.files("~/rildata/rildata_fullDataset", pattern = "RData$", full.names = TRUE, recursive = TRUE))
-# 
-# fils
-# 
+# Load in correct res structure
+load("~/rildata/rildata_realfullDataset/2020_11_19_res_RILPop_full.RData")
+
+# Pulls filenames from directory
+fils <- matrix(list.files("~/rildata/rildata_realfullDataset", pattern = "RData$", full.names = TRUE, recursive = TRUE))
+
 # # Loading them into RES structure
-# RES <- lapply(fils, loadRData)
-# 
-# # Save all that hard work, yeah
+RES <- lapply(fils, loadRData)
+
+# Shouldn't need thisas of 11.19.2020  
+## Use if combined multiple res structures
 # save(RES, file = "~/rildata/rildata_fullDataset/2020_10_21_allresStructures.RData")
 ```
 
@@ -110,6 +209,7 @@ pathname_to_filename = function(genotype) {
   genoName = basename(dirname(dirname(toString(genotype$fileName[[1]]))))
   # Create empty matrix of one column and as many rows as there are of res structure
   outnames = matrix(1, nrow(genotype))
+  # outnames = matrix(1, as.numeric(nrow(genotype)))
   # Loops through each row of res
   ## Extracts pathname from each row in the dataframe
   ## Extracts filename from each pathname
@@ -153,7 +253,7 @@ RILParam_concatenated = bind_rows(RILParams)
 # RILParam_concatenated = bind_rows(fileName) 
 
 # Save progress
-save(RILParam_concatenated, file = "~/rildata/rildata_fullDataset/2020_10_21_RILsSummaryParameters.csv")
+save(RILParam_concatenated, file = "~/rildata/rildata_realfullDataset/2020_11_20_RILsSummaryParameters.csv")
 ```
 
 ```{r shorten-fileName-to-be-RILnumbers}
@@ -162,12 +262,12 @@ save(RILParam_concatenated, file = "~/rildata/rildata_fullDataset/2020_10_21_RIL
 ## Note: Revised on 2020-05-27 to add leading zeros before RIL number
 
 # Start with file you just created (^), need to load() then get() to have in environment
-AllRILs_SummaryParameters = load("~/rildata/rildata_fullDataset/2020_10_21_RILsSummaryParameters.csv")
+AllRILs_SummaryParameters = load("~/rildata/rildata_realfullDataset/2020_11_20_RILsSummaryParameters.csv")
 AllRILs_SummaryParameters = get(AllRILs_SummaryParameters)
 
-
-RIL1_SummaryParameters = AllRILs_SummaryParameters %>%
-  select.r(RIL1)
+# Use if only need one RIL (how do you get select.r?)
+# RIL1_SummaryParameters = AllRILs_SummaryParameters %>%
+#   select.r(RIL1)
 
 
 # Makes a column of shortened RIL names by copying the fileName column
@@ -209,14 +309,15 @@ AllRILs_SummaryParameters$RILs = str_extract(AllRILs_SummaryParameters$RILs, "[0
 # ## Replaces the NAs with "Cvi" and "Ler" strings
 # AllRILs_SummaryParameters$RILs[is.na(AllRILs_SummaryParameters$RILs)] <- correctNAs[,2]
 
-# Remove duplicates RILs 
+
+# Use if need to remove duplicate RILs
 ## Because the 1st code chunk loads one extra res file (Cvi, Ler & RILs1-10)
-AllRILs_SummaryParameters = AllRILs_SummaryParameters %>% 
-  distinct()
+# AllRILs_SummaryParameters = AllRILs_SummaryParameters %>% 
+#   distinct()
 
 
 # Save progress in csv file
-write.csv(AllRILs_SummaryParameters, "~/rildata/rildata_fullDataset/2020_10_21_AllRILs_SummaryParameters.csv")
+write.csv(AllRILs_SummaryParameters, "~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_SummaryParameters.csv")
 ```
 
 ```{r sample-size-balancing}
@@ -224,7 +325,7 @@ write.csv(AllRILs_SummaryParameters, "~/rildata/rildata_fullDataset/2020_10_21_A
 
 # Load in data saved from previous code chunk ^
 # Problem: also loads in rownames as 1st column, fix this?
-AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_21_AllRILs_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_SummaryParameters.csv")
 
 
 
@@ -239,7 +340,7 @@ AllRILs_nParameters = AllRILs_SummaryParameters %>%
   # filter(n >= SAMPLETHRESH)
 
 # Save table with RIL & respective number of samples
-write.csv(AllRILs_nParameters, "~/rildata/rildata_fullDataset/2020_10_21_AllRILs_nParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_nParameters.csv")
 
 #############################################################################################
 ################ Use this if need to level out sample numbers across dataset ################
@@ -303,7 +404,7 @@ tally() # No. of samples for each RIL
 
 # Load in csv with corrected sample size data
 # AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters.csv")
-AllRILs_SummaryParameters = read.csv("~/rildata/rildata_fullDataset/2020_10_21_AllRILs_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_SummaryParameters.csv")
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
@@ -351,10 +452,10 @@ AllRILs_VarianceParameters = AllRILs_logParameters %>%
 #   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_fullDataset/2020_10_21_AllRILs_AveragedParameters.csv")
-write.csv(AllRILs_MedianParameters, "~/rildata/rildata_fullDataset/2020_10_21_AllRILs_MedianParameters.csv")
-write.csv(AllRILs_StDevParameters, "~/rildata/rildata_fullDataset/2020_10_21_AllRILs_StDevParameters.csv")
-write.csv(AllRILs_VarianceParameters, "~/rildata/rildata_fullDataset/2020_10_21_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_AveragedParameters.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_MedianParameters.csv")
+write.csv(AllRILs_StDevParameters, "~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_StDevParameters.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/rildata_realfullDataset/2020_11_20_AllRILs_VarianceParameters.csv")
 # write.csv(AllRILs_nParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_nParameters.csv")
 ```
 

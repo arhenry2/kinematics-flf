@@ -78,10 +78,10 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
 
 ##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = k; lodcolumn 4 = n
   # plot(out, map, lodcolumn = 1, col = rgb(0, 0, 0, 0.5), main = "QTL Map for Average Parameter Data") # vf = black
-  plot(out, map, lodcolumn = 1, ylim = c(0,8), col = rgb(0, 0, 0, 0.5), main = "QTL Map for ASHLEY Averaged Parameters") # vf = black
-  plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # log(k) = red
-  plot(out, map, lodcolumn = 3, col = rgb(0, 0, 1, 0.5), add = TRUE) # log(n) = blue
-  plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # n = green
+  plot(out, map, lodcolumn = 1, ylim = c(0,9), col = rgb(0, 0, 0, 0.5), main = "QTL Map for ASHLEY Averaged Parameters") # x0 = black
+  plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # vf = red
+  plot(out, map, lodcolumn = 3, col = rgb(0, 0, 1, 0.5), add = TRUE) # log(k) = blue
+  plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # log(n) = green
   # plot(out, map, lodcolumn = 5, col = rgb(0.4, 0, 0.6, 0.5), add = TRUE)# log(n) = violet
 
   abline(h = sig[,1], col = rgb(0, 0, 0, 0.5)) # vf = black

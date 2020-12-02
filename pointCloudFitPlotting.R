@@ -116,11 +116,11 @@ write.csv(gTruthFitted, file = "~/Desktop/RILPop_tmp/RIL1_1/rawData.csv")
 
 
 # only saves parameters, need to read.csv the rawData.csv from that folder
-posVel = read.csv("/Users/ashleyhenry/Desktop/RILPop_tmp/RIL1_1/RIL1--RIL1_005_3--/rawData.csv")
+posVel = read.csv("/Users/ashleyhenry/Desktop/RILPop_tmp/RIL1_1/RIL1--RIL1_005_3--/rawData.csv", header = FALSE)
 posVel = posVel %>%
   rename(
-    pos = X10.055,
-    vel = X.0
+    pos = V1,
+    vel = V2
   )
 
 
@@ -219,7 +219,6 @@ allRILsSummaryTable_lowMLE = allRILsSummaryTable %>%
 ## RILpop--RIL144X--RIL144X_003_3--	w/ MLE = 9671.525	
 ## RILpop--RIL146_2--RIL146_004_4--	w/ MLE = 7064.311	
 ## RILpop--RIL41--RIL41_002_4--	w/ MLE = 6829.046
-
 
 # 156/1607 = 0.0970753
 ## The portion of fits that might be bad = ~10%
