@@ -42,6 +42,14 @@ rawDataSummaryTable = data.frame(matrix( # Error with nrow(), so wrote 3 rows: f
                              nrow = 0,
                              dimnames = list(NULL, c("filename", "pos", "vel"))))
 
+
+
+
+
+
+
+
+###############################################################
 for (i in 1:length(res[[1]]$rawData)) {
   # gtype = res[[i]]$summary_table
   # summaryTable = gList[[1]]
@@ -52,9 +60,47 @@ for (i in 1:length(res[[1]]$rawData)) {
   #   # mutate(res[[1]]$rawData[[i]]$fileName_pos <- res[[1]]$rawData[[i]]$pos) # want the filename to be in the column name
 }
 
-for (i in 1:length(res[[1]]$rawData)){
-  tmp2 <- as.data.frame(res[[1]]$rawData[[i]]) # This makes a dataframe with pos and vel columns! But filename is it's own column...
+
+####################################################################
+# for loop to plot point cloud & fitted line on same graph
+# Saves plot to Desktop for each replicate
+## 12-07-2020
+for (i in 1:length(res)){
+  for(j in 1:length(res[[i]]$rawData)){
+    rawData <- as.data.frame(res[[i]]$rawData[[j]])
+    graphTitle = rawData$fileName[j]
+    # Shorten fileName to the replicate name for simplicity
+    graphTitle = str_split(graphTitle, '/', simplify = TRUE)[,8]
+    print(graphTitle)
+    fittedVel = flf(rawData$pos,
+                    res[[i]]$summary_table$x0[j],
+                    res[[i]]$summary_table$vf[j],
+                    res[[i]]$summary_table$k[j],
+                    res[[i]]$summary_table$n[j])
+    
+    print(ggplot(rawData, aes(x = rawData$pos)) +
+      geom_point(aes(y = rawData$vel)) +
+      geom_point(aes(y = fittedVel), color = "blue") +
+      ggtitle(graphTitle) +
+      xlab("Position from Root Tip (px)") +
+      ylab("Velocity from Root Tip (px/frame)") +
+      theme_bw())
+    # Saving each graph as .tiff takes up more space than .pdf, so using .pdf for full RILSet
+    graphName = paste('~/Desktop/RILPop_plots/', graphTitle, '_pointCloudFittedVel.pdf', sep = "")
+    # Saves plot to location written above ^
+    ggsave(graphName)
+  }
+ 
 }
+
+####################################################################
+
+# Pratice with reg expression, once again...
+tmp = res[[1]]$rawData[[1]]$fileName[1]
+tmp = res[[3]]$rawData[[1]]$fileName[1]
+str_split(tmp, '/', simplify = TRUE)[,8]
+
+
 
 # - Plot flf fit on these point clouds, because they have low MLE values in the SummaryTable
 ## RILpop--RIL1--RIL1_004_3-- w/ MLE = 8897.891 - DONE

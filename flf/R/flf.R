@@ -57,12 +57,12 @@ fit_NelderMead <- function(y, z, ix0, ivf, ik, iN, loopValue){
     ## find all residual levels so that the threshold is 1.5
     id = which(residY < threshold)
     threshold = threshold*per
-    print(i)
+    # print(i)
     # print(threshold)
     z = z[id]
     y = y[id]
-    print(length(z))
-    plot(z~y)
+    # print(length(z))
+    # plot(z~y)
     #####################################################
 
     #####################################################
