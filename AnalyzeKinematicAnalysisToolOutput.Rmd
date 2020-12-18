@@ -230,7 +230,7 @@ for (i in 1:length(res)) {
   resultVel <- evaluateVelFits(res[[i]], pos)
   matrixEnd = ncol(resultVel) - 1
   for (j in 2:matrixEnd) {
-    resultVel[,j] <- as.numeric(resultVel[,j]) * 0.08202 } # conversion from px/frame to mm/hr for all velocity value columns
+    resultVel[,j] <- as.numeric(resultVel[,j]) * 0.08 } # conversion from px/frame to mm/hr for all velocity value columns
   resultVel[,1] = as.numeric(resultVel[,1]) / 1500 # conversion from px to mm for the one position value column; 1500px = 1mm
   write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/PosEvaluatedVel', as.numeric(i), '.csv', sep = ""), row.names = F)
   plot(resultVel[,1], resultVel[,2])
