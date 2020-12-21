@@ -152,7 +152,7 @@ save(res, file = "~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_res_pux1Day3.RD
 # 1 December 2020
 # Defining the Maturation Zone: Finding points that are within the maturation zone
 ## This will help to see if roots with little/no mat zone should be removed from the data
-resValue = 2 # Used RIL40 as example
+resValue = 3 # Used RIL40 as example
 pos = c(1:3000)
 # Get velocity fits for example data
 fittedVel = flf(pos, 
@@ -185,21 +185,101 @@ ggplot(REGRfit, aes(x = pos)) +
 ## i.e. Draws line near bottom of REGR curve & grabs the points in meristematic & maturation zones
 # AND THEN
 # Finds Vel points that are greater than 50% of the max velocity
+## BUT! reports the index number (row number) of the cases that are "true"
 ## i.e. Grabs the ~maturation~ part of the above selection
-k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5)) 
+k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5)) # reports row number/column number of the cases that are "true"
+k
 # Boolian version of above (i.e. gives true/false version)
 kbool = (REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5)
 
 plot(kbool) # Should plot only the maturation zone, but doesn't...? Something's off here...
-
 
 # 12-01-2020 at 5:00pm w/ Nathan:
 # For every replicate: (AFTER THE FITTING, THIS IS SEPARATE)
 ## count number of rawData points fall within the maturation zone
 ## what % of points is that? -> distribution of this & find cut-off point
 
+# 12-21-2020 Trying out the maturation zone defining now:
+# Now use that cut-off to count how many rawData points fall in the mat zone
+## Then calc % of rawData points that fall in the mat zone
+## Report out % of mat zone points w/ fileName
+
+fittedVel[k]
+plot(pos[k], fittedVel[k], ylim = c(0, max(fittedVel[k])), xlim = c(0, 3000)) # just plots mat zone
+
+minVelofMatZone = min(fittedVel[k]) # find min value of vel that's in mat zone
+
+rawDatainMatZone = which(res[[3]]$rawData[[1]]$vel > minVelofMatZone)
+# Above won't work well, b/c no values are in the mat zone for RIL40...
+# Try again for RIL83 -> found values greater than mat zone start!
+percentofMatZone = (length(rawDatainMatZone)/length(res[[3]]$rawData[[1]]$vel))*100
+
+fileName = rawData$fileName[1]
+fileName = str_split(fileName, '/', simplify = TRUE)[,8]
+
+
+
 ####################################################################################
 
+### Thought processing:
+# which() gives the index of the velocity/REGR points that are in k
+# this index won't work on pos values in the rawData, b/c there are 8000+ indices & the disk locations repeat along the root
+# need to grab the velocity values at that point, graph them to see where they are & pull THOSE vel values from the rawData
+## As of 11:51 on 12-21-2020 I did the above task, now to add it to a for loop!
+
+for (i in 1:length(res)){
+  for(j in 1:length(res[[i]]$rawData)){
+   
+i = 1
+j = 2
+    rawData <- as.data.frame(res[[i]]$rawData[[j]]) 
+    fileName = rawData$fileName[j]
+    fileName = str_split(fileName, '/', simplify = TRUE)[,8]
+    
+    pos = c(1:3000)
+# Get velocity fits for example data
+fittedVel = flf(pos, 
+                res[[i]]$summary_table[2]$x0[j],	
+                res[[i]]$summary_table[3]$vf[j],	
+                res[[i]]$summary_table[4]$k[j],	
+                res[[i]]$summary_table[5]$n[j])
+
+# Get REGR fits for example data
+REGRtmp <- REGR(pos, 
+                  res[[i]]$summary_table[2]$x0[j],	
+                  res[[i]]$summary_table[3]$vf[j],	
+                  res[[i]]$summary_table[4]$k[j],	
+                  res[[i]]$summary_table[5]$n[j],
+                  1)
+
+REGRfit = data.frame(cbind(pos, REGRtmp))
+maxREGR = max(REGRtmp) # finds Vmax
+per = 0.2 # percentage of area under the curve we want
+maxVel = max(fittedVel) # finds vf
+
+velocityFit = data.frame(cbind(pos, fittedVel))
+plot(velocityFit)
+
+ggplot(REGRfit, aes(x = pos)) +
+  geom_point(aes(y = REGRtmp))
+
+k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5)) # reports row number/column number of the cases that are "true"
+
+fittedVelofMatZone = fittedVel[k]
+plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
+
+minVelofMatZone = min(fittedVelofMatZone) # find min value of vel that's in mat zone
+
+rawDatainMatZone = which(rawData$vel > minVelofMatZone)
+# Above won't work well, b/c no values are in the mat zone for RIL40... will leave an NA, see if this will cause issues
+# Try again for RIL83 -> found values greater than mat zone start!
+percentofMatZone = (length(rawDatainMatZone)/length(res[[3]]$rawData[[1]]$vel))*100
+    
+  }
+}
+
+### Brain dump:
+# RIL1_002_3.5 has 67% of it's rawData vel values. This seems ridiculously high... Where am I making a mistake?
 ```
 
 # Note: The following code chunks are copied from combineResStructures.Rmd to have one Analysis Script instead of several scripts doing partial work
