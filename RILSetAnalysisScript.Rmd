@@ -60,39 +60,6 @@ masterPath <- "~/Desktop/RILPop_tmp/"
 # loopValue at 10 for whole RIL set
 res <- processMasterFolder(masterPath, 10)
 
-####################################################################
-# for loop to plot point cloud & fitted line on same graph
-# Saves plot to Desktop for each replicate
-## 12-07-2020
-for (i in 1:length(res)){
-  for(j in 1:length(res[[i]]$rawData)){
-    rawData <- as.data.frame(res[[i]]$rawData[[j]])
-    graphTitle = rawData$fileName[j]
-    # Shorten fileName to the replicate name for simplicity
-    graphTitle = str_split(graphTitle, '/', simplify = TRUE)[,8]
-    print(graphTitle)
-    fittedVel = flf(rawData$pos,
-                    res[[i]]$summary_table$x0[j],
-                    res[[i]]$summary_table$vf[j],
-                    res[[i]]$summary_table$k[j],
-                    res[[i]]$summary_table$n[j])
-    
-    print(ggplot(rawData, aes(x = rawData$pos)) +
-      geom_point(aes(y = rawData$vel)) +
-      geom_point(aes(y = fittedVel), color = "blue") +
-      ggtitle(graphTitle) +
-      xlab("Position from Root Tip (px)") +
-      ylab("Velocity from Root Tip (px/frame)") +
-      theme_bw())
-    # Saving each graph as .tiff takes up more space than .pdf, so using .pdf for full RILSet
-    graphName = paste('~/Desktop/RILPop_plotsNEW/', graphTitle, "_", i, '_pointCloudFittedVel.pdf', sep = "")
-    # graphName = paste('~/Desktop/pux1Imaging/pux1_plots/', graphTitle, '_pointCloudFittedVel.pdf', sep = "")
-    # Saves plot to location written above ^
-    ggsave(graphName)
-  }
-}
-####################################################################
-
 # Saves res structure (technically a "large list") to the working directory
 ## Saves data in a binary file
 save(res, file = "~/rildata/rildata_realfullDataset/2020_12_07_res_RILPop_full.RData")
@@ -104,6 +71,7 @@ save(res, file = "~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_res_pux1Day3.RD
 ## IF that slope isn't ~0, then you likely didn't get enough maturation zone
 # Create code to report out the -log(mean(slope[last 10 position points - mat zone])) to the res structure summary table
 ## Added this to flf.R on 12.1.2020!
+
 # wholePosVel = read.csv("/Users/ashleyhenry/Desktop/RILPop_full/RIL1_1/RIL1--RIL1_001_1.5--/rawData.csv", header = FALSE)
 # wholePosVel = wholePosVel %>%
 #   rename(
@@ -139,13 +107,6 @@ save(res, file = "~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_res_pux1Day3.RD
 #      1)
 # # Take -log(mean(x))
 # logmeanFinalPos = -log(mean(final10REGR))
-
-# From res structure's Summary Table[matSlope]
-# RIL1                - 13.84374
-# RIL40 - no mat zone - 5.734695
-# RIL83               - 13.14896
-# RIL86               - 7.43973
-# RIL99 - no mat zone - 6.216946
 ####################################################################################
 
 ####################################################################################
@@ -187,12 +148,8 @@ ggplot(REGRfit, aes(x = pos)) +
 # Finds Vel points that are greater than 50% of the max velocity
 ## BUT! reports the index number (row number) of the cases that are "true"
 ## i.e. Grabs the ~maturation~ part of the above selection
-k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5)) # reports row number/column number of the cases that are "true"
+k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5))
 k
-# Boolian version of above (i.e. gives true/false version)
-kbool = (REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5)
-
-plot(kbool) # Should plot only the maturation zone, but doesn't...? Something's off here...
 
 # 12-01-2020 at 5:00pm w/ Nathan:
 # For every replicate: (AFTER THE FITTING, THIS IS SEPARATE)
@@ -219,69 +176,170 @@ fileName = str_split(fileName, '/', simplify = TRUE)[,8]
 
 
 
-####################################################################################
 
-### Thought processing:
+```
+
+```{r plot-point-cloud-&-fitting, echo = FALSE}
+# for loop to plot point cloud & fitted line on same graph
+## Saves plot to Desktop/RILPop_plotsNEW/ for each replicate
+## 12-07-2020
+for (i in 1:length(res)){
+  for(j in 1:length(res[[i]]$rawData)){
+    rawData <- as.data.frame(res[[i]]$rawData[[j]])
+    graphTitle = rawData$fileName[j]
+    # Shorten fileName to the replicate name for simplicity
+    graphTitle = str_split(graphTitle, '/', simplify = TRUE)[,8]
+    print(graphTitle)
+    fittedVel = flf(rawData$pos,
+                    res[[i]]$summary_table$x0[j],
+                    res[[i]]$summary_table$vf[j],
+                    res[[i]]$summary_table$k[j],
+                    res[[i]]$summary_table$n[j])
+    
+    print(ggplot(rawData, aes(x = rawData$pos)) +
+      geom_point(aes(y = rawData$vel)) +
+      geom_point(aes(y = fittedVel), color = "blue") +
+      ggtitle(graphTitle) +
+      xlab("Position from Root Tip (px)") +
+      ylab("Velocity from Root Tip (px/frame)") +
+      theme_bw())
+    # Saving each graph as .tiff takes up more space than .pdf, so using .pdf for full RILSet
+    graphName = paste('~/Desktop/RILPop_plotsNEW/', graphTitle, "_", i, '_pointCloudFittedVel.pdf', sep = "")
+    # graphName = paste('~/Desktop/pux1Imaging/pux1_plots/', graphTitle, '_pointCloudFittedVel.pdf', sep = "")
+    # Saves plot to location written above ^
+    ggsave(graphName)
+  }
+}
+
+```
+
+```{r percent-mat-zone, echo = FALSE}
+
+### Thought process:
 # which() gives the index of the velocity/REGR points that are in k
 # this index won't work on pos values in the rawData, b/c there are 8000+ indices & the disk locations repeat along the root
 # need to grab the velocity values at that point, graph them to see where they are & pull THOSE vel values from the rawData
 ## As of 11:51 on 12-21-2020 I did the above task, now to add it to a for loop!
 
+## Calculating percent of Maturation Zone for each root
+# Finished on 1-4-2021
+
+percentofMatZone <- data.frame(filename = c(), percentofMatZone = c())
+
 for (i in 1:length(res)){
   for(j in 1:length(res[[i]]$rawData)){
-   
-i = 1
-j = 2
     rawData <- as.data.frame(res[[i]]$rawData[[j]]) 
     fileName = rawData$fileName[j]
     fileName = str_split(fileName, '/', simplify = TRUE)[,8]
-    
+    print(fileName)
+
     pos = c(1:3000)
-# Get velocity fits for example data
-fittedVel = flf(pos, 
-                res[[i]]$summary_table[2]$x0[j],	
-                res[[i]]$summary_table[3]$vf[j],	
-                res[[i]]$summary_table[4]$k[j],	
-                res[[i]]$summary_table[5]$n[j])
+    # Get velocity fits for example data
+    fittedVel = flf(pos, 
+                 res[[i]]$summary_table[2]$x0[j],	
+                 res[[i]]$summary_table[3]$vf[j],	
+                 res[[i]]$summary_table[4]$k[j],	
+                 res[[i]]$summary_table[5]$n[j])
 
-# Get REGR fits for example data
-REGRtmp <- REGR(pos, 
-                  res[[i]]$summary_table[2]$x0[j],	
-                  res[[i]]$summary_table[3]$vf[j],	
-                  res[[i]]$summary_table[4]$k[j],	
-                  res[[i]]$summary_table[5]$n[j],
-                  1)
+    # Get REGR fits for example data
+    fittedREGR <- REGR(pos, 
+                   res[[i]]$summary_table[2]$x0[j],	
+                   res[[i]]$summary_table[3]$vf[j],	
+                   res[[i]]$summary_table[4]$k[j],	
+                   res[[i]]$summary_table[5]$n[j],
+                   1)
 
-REGRfit = data.frame(cbind(pos, REGRtmp))
-maxREGR = max(REGRtmp) # finds Vmax
-per = 0.2 # percentage of area under the curve we want
-maxVel = max(fittedVel) # finds vf
+    # REGRfit = data.frame(cbind(pos, fittedREGR))
+    maxREGR = max(fittedREGR) # finds Vmax
+    per = 0.2 # percentage of area under the curve we want
+    maxVel = max(fittedVel) # finds vf
 
-velocityFit = data.frame(cbind(pos, fittedVel))
-plot(velocityFit)
+    velocityFit = data.frame(cbind(pos, fittedVel))
+    # plot(velocityFit)
 
-ggplot(REGRfit, aes(x = pos)) +
-  geom_point(aes(y = REGRtmp))
+    # ggplot(REGRfit, aes(x = pos)) +
+    #   geom_point(aes(y = fittedREGR))
 
-k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5)) # reports row number/column number of the cases that are "true"
+    k = which((fittedREGR < maxREGR*per) & (fittedVel > maxVel*0.5)) # reports row number/column number of the cases that are "true"
 
-fittedVelofMatZone = fittedVel[k]
-plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
+    fittedVelofMatZone = fittedVel[k]
+    # plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
 
-minVelofMatZone = min(fittedVelofMatZone) # find min value of vel that's in mat zone
+    minVelofMatZone = min(fittedVelofMatZone) # find min value of vel that's in mat zone
 
-rawDatainMatZone = which(rawData$vel > minVelofMatZone)
-# Above won't work well, b/c no values are in the mat zone for RIL40... will leave an NA, see if this will cause issues
-# Try again for RIL83 -> found values greater than mat zone start!
-percentofMatZone = (length(rawDatainMatZone)/length(res[[3]]$rawData[[1]]$vel))*100
+    rawDatainMatZone = which(rawData$vel > minVelofMatZone)
+    percentMatZone = (length(rawDatainMatZone)/length(res[[i]]$rawData[[j]]$vel))*100
     
+    tmp <- data.frame(filename = fileName, percentofMatZone = percentMatZone)
+    percentofMatZone <- rbind(percentofMatZone,tmp)
+   
   }
+  percentofMatZone
 }
 
-### Brain dump:
-# RIL1_002_3.5 has 67% of it's rawData vel values. This seems ridiculously high... Where am I making a mistake?
-```
+WholeRILSet_PercentofMatZone = percentofMatZone
+write.csv(WholeRILSet_PercentofMatZone, "~/Desktop/01-04-2021_WholeRILSet_PercentofMatZone.csv")
 
+
+
+WholeRILSet_PercentofMatZone = read.csv("~/Desktop/01-04-2021_WholeRILSet_PercentofMatZone.csv", header = TRUE) %>%
+  select(-X)
+
+ggplot(WholeRILSet_PercentofMatZone, aes(percentofMatZone)) +
+  geom_density() +
+  ggtitle("Percentages of Position Values that are in the Maturation Zone (Whole RIL Set)")
+
+rootsWithZeroMatZone = WholeRILSet_PercentofMatZone %>%
+  filter(percentofMatZone < 0.009)
+
+# Note: there are 56 of 1631 roots that have 0 position points within the defined maturation zone
+# Also Note: Visually, would like the cut-off to be 0.5% of the maturation zone included. Anything >5%, I'm comfy keeping. 
+## I'll look into those <5%
+
+#######################################################################################################################################
+## As of 4pm 1-5-2021 Talked w/ Edgar, he said to check if there's a correlation b/w meanAbsDiff values & low % mat zone & matSlope
+
+# Prep Summary Table of Parameters for plotting
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv") %>%
+  select(-X) %>%
+  group_by(fileName)
+# Prep dataframe of percent of position points in mat zone & filenames for plotting
+WholeRILSet_PercentofMatZone = read.csv("~/Desktop/01-04-2021_WholeRILSet_PercentofMatZone.csv", header = TRUE) %>%
+  select(-X) %>%
+  rename(fileName = filename) %>%
+  group_by(fileName)
+
+tmp = cbind(WholeRILSet_PercentofMatZone$percentofMatZone, AllRILs_SummaryParameters$meanAbsDiff)
+plot(tmp)
+# Plot percentMatZone vs meanAbsDiff
+## Is there a correlation b/w high/low meanAbsDiff & % of points in mat zone -> Answer: Nope.
+ggplot(AllRILs_SummaryParameters, aes(x = AllRILs_SummaryParameters$meanAbsDiff, y = WholeRILSet_PercentofMatZone$percentofMatZone)) +
+  geom_point() +
+  xlab("meanAbsDiff") +
+  ylab("Percent of Pos Points in Maturation Zone") +
+  ggtitle("") +
+  theme_bw()
+
+# Same as above, but reversed axes
+ggplot(WholeRILSet_PercentofMatZone, aes(x = WholeRILSet_PercentofMatZone$percentofMatZone, AllRILs_SummaryParameters$meanAbsDiff)) +
+  geom_point() +
+  ylab("Mean Absolute Difference") +
+  xlab("Percent of Position Points in Maturation Zone") +
+  ggtitle("") +
+  theme_bw()
+
+# Plot to see if there's correlation b/w percentofMatZone & matSlope
+## There's a correlation: As the % of points in mat zone increases, so does the slope of the last 10 vel curve points
+ggplot(WholeRILSet_PercentofMatZone, aes(x = WholeRILSet_PercentofMatZone$percentofMatZone, AllRILs_SummaryParameters$matSlope)) +
+  geom_point() +
+  xlab("Percent of Position Points in Maturation Zone") +
+  ylab("Slope of Last 10 Velocity Curve Points") +
+  ggtitle("") +
+  theme_bw()
+
+#######################################################################################################################################
+
+```
 # Note: The following code chunks are copied from combineResStructures.Rmd to have one Analysis Script instead of several scripts doing partial work
 
 ```{r Load-Res-Structures}
