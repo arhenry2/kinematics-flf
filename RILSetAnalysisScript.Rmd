@@ -37,11 +37,11 @@ __Note:__
 * Balances out sample size (currently at less than/equal to 8 replicates)
 * Calculates log(k) and log(n)
 * Calculates average, median, st dev, & variance of the parameters for each RIL
+* Goodness of fit for flf curve (R^2, show flf on point cloud for each RIL)
+* Repeatable & efficient outlier testing (functions are in flf.R, run in this script)
 
 ## Script to-dos:
-* Repeatable & efficient outlier testing (one-by one version in AnalyzeKinematic[...].Rmd)
 * Velocity curves (calcs pos & vel from parameters)
-* Goodness of fit for flf curve (R^2, show flf on point cloud for each RIL)
 * REGR curves (calc pos & REGR from parameters)
 * 
 
@@ -64,7 +64,9 @@ res <- processMasterFolder(masterPath, 10)
 ## Saves data in a binary file
 save(res, file = "~/rildata/rildata_realfullDataset/2020_12_07_res_RILPop_full.RData")
 save(res, file = "~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_res_pux1Day3.RData")
+```
 
+```{r drafting-code-block}
 ####################################################################################
 # 11-24-2020, Cases with very low mle value correlated w/ little/no mat zone:
 # give flf parameters & gives REGR growth rate (slope at last 10 points of the fit)
@@ -109,70 +111,70 @@ save(res, file = "~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_res_pux1Day3.RD
 # logmeanFinalPos = -log(mean(final10REGR))
 ####################################################################################
 
-####################################################################################
-# 1 December 2020
-# Defining the Maturation Zone: Finding points that are within the maturation zone
-## This will help to see if roots with little/no mat zone should be removed from the data
-resValue = 3 # Used RIL40 as example
-pos = c(1:3000)
-# Get velocity fits for example data
-fittedVel = flf(pos, 
-                res[[resValue]]$summary_table[2]$x0,	
-                res[[resValue]]$summary_table[3]$vf,	
-                res[[resValue]]$summary_table[4]$k,	
-                res[[resValue]]$summary_table[5]$n)
-
-# Get REGR fits for example data
-REGRtmp <- REGR(pos, 
-                  res[[resValue]]$summary_table[2]$x0,	
-                  res[[resValue]]$summary_table[3]$vf,	
-                  res[[resValue]]$summary_table[4]$k,	
-                  res[[resValue]]$summary_table[5]$n,
-                  1)
-
-REGRfit = data.frame(cbind(pos, REGRtmp))
-maxREGR = max(REGRtmp) # finds Vmax
-per = 0.2 # percentage of area under the curve we want
-maxVel = max(fittedVel) # finds vf
-
-velocityFit = data.frame(cbind(pos, fittedVel))
-plot(velocityFit)
-
-ggplot(REGRfit, aes(x = pos)) +
-  geom_point(aes(y = REGRtmp))
-
-# find values that are outside of 20% of the REGR curve, and also greater than 50% of the max velocity values = points in the maturation zone
-# Finds REGR points that are less than 20% of the max
-## i.e. Draws line near bottom of REGR curve & grabs the points in meristematic & maturation zones
-# AND THEN
-# Finds Vel points that are greater than 50% of the max velocity
-## BUT! reports the index number (row number) of the cases that are "true"
-## i.e. Grabs the ~maturation~ part of the above selection
-k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5))
-k
-
-# 12-01-2020 at 5:00pm w/ Nathan:
-# For every replicate: (AFTER THE FITTING, THIS IS SEPARATE)
-## count number of rawData points fall within the maturation zone
-## what % of points is that? -> distribution of this & find cut-off point
-
-# 12-21-2020 Trying out the maturation zone defining now:
-# Now use that cut-off to count how many rawData points fall in the mat zone
-## Then calc % of rawData points that fall in the mat zone
-## Report out % of mat zone points w/ fileName
-
-fittedVel[k]
-plot(pos[k], fittedVel[k], ylim = c(0, max(fittedVel[k])), xlim = c(0, 3000)) # just plots mat zone
-
-minVelofMatZone = min(fittedVel[k]) # find min value of vel that's in mat zone
-
-rawDatainMatZone = which(res[[3]]$rawData[[1]]$vel > minVelofMatZone)
-# Above won't work well, b/c no values are in the mat zone for RIL40...
-# Try again for RIL83 -> found values greater than mat zone start!
-percentofMatZone = (length(rawDatainMatZone)/length(res[[3]]$rawData[[1]]$vel))*100
-
-fileName = rawData$fileName[1]
-fileName = str_split(fileName, '/', simplify = TRUE)[,8]
+# ####################################################################################
+# # 1 December 2020
+# # Defining the Maturation Zone: Finding points that are within the maturation zone
+# ## This will help to see if roots with little/no mat zone should be removed from the data
+# resValue = 3 # Used RIL40 as example
+# pos = c(1:3000)
+# # Get velocity fits for example data
+# fittedVel = flf(pos, 
+#                 res[[resValue]]$summary_table[2]$x0,	
+#                 res[[resValue]]$summary_table[3]$vf,	
+#                 res[[resValue]]$summary_table[4]$k,	
+#                 res[[resValue]]$summary_table[5]$n)
+# 
+# # Get REGR fits for example data
+# REGRtmp <- REGR(pos, 
+#                   res[[resValue]]$summary_table[2]$x0,	
+#                   res[[resValue]]$summary_table[3]$vf,	
+#                   res[[resValue]]$summary_table[4]$k,	
+#                   res[[resValue]]$summary_table[5]$n,
+#                   1)
+# 
+# REGRfit = data.frame(cbind(pos, REGRtmp))
+# maxREGR = max(REGRtmp) # finds Vmax
+# per = 0.2 # percentage of area under the curve we want
+# maxVel = max(fittedVel) # finds vf
+# 
+# velocityFit = data.frame(cbind(pos, fittedVel))
+# plot(velocityFit)
+# 
+# ggplot(REGRfit, aes(x = pos)) +
+#   geom_point(aes(y = REGRtmp))
+# 
+# # find values that are outside of 20% of the REGR curve, and also greater than 50% of the max velocity values = points in the maturation zone
+# # Finds REGR points that are less than 20% of the max
+# ## i.e. Draws line near bottom of REGR curve & grabs the points in meristematic & maturation zones
+# # AND THEN
+# # Finds Vel points that are greater than 50% of the max velocity
+# ## BUT! reports the index number (row number) of the cases that are "true"
+# ## i.e. Grabs the ~maturation~ part of the above selection
+# k = which((REGRtmp < maxREGR*per) & (fittedVel > maxVel*0.5))
+# k
+# 
+# # 12-01-2020 at 5:00pm w/ Nathan:
+# # For every replicate: (AFTER THE FITTING, THIS IS SEPARATE)
+# ## count number of rawData points fall within the maturation zone
+# ## what % of points is that? -> distribution of this & find cut-off point
+# 
+# # 12-21-2020 Trying out the maturation zone defining now:
+# # Now use that cut-off to count how many rawData points fall in the mat zone
+# ## Then calc % of rawData points that fall in the mat zone
+# ## Report out % of mat zone points w/ fileName
+# 
+# fittedVel[k]
+# plot(pos[k], fittedVel[k], ylim = c(0, max(fittedVel[k])), xlim = c(0, 3000)) # just plots mat zone
+# 
+# minVelofMatZone = min(fittedVel[k]) # find min value of vel that's in mat zone
+# 
+# rawDatainMatZone = which(res[[3]]$rawData[[1]]$vel > minVelofMatZone)
+# # Above won't work well, b/c no values are in the mat zone for RIL40...
+# # Try again for RIL83 -> found values greater than mat zone start!
+# percentofMatZone = (length(rawDatainMatZone)/length(res[[3]]$rawData[[1]]$vel))*100
+# 
+# fileName = rawData$fileName[1]
+# fileName = str_split(fileName, '/', simplify = TRUE)[,8]
 
 
 
@@ -290,15 +292,19 @@ ggplot(WholeRILSet_PercentofMatZone, aes(percentofMatZone)) +
   ggtitle("Percentages of Position Values that are in the Maturation Zone (Whole RIL Set)")
 
 rootsWithZeroMatZone = WholeRILSet_PercentofMatZone %>%
-  filter(percentofMatZone < 0.009)
+  filter(percentofMatZone < 0.0090)
+
+rootswithLittleMatZone = WholeRILSet_PercentofMatZone %>%
+  filter(percentofMatZone < 0.5)
 
 # Note: there are 56 of 1631 roots that have 0 position points within the defined maturation zone
 # Also Note: Visually, would like the cut-off to be 0.5% of the maturation zone included. Anything >5%, I'm comfy keeping. 
 ## I'll look into those <5%
 
 #######################################################################################################################################
-## As of 4pm 1-5-2021 Talked w/ Edgar, he said to check if there's a correlation b/w meanAbsDiff values & low % mat zone & matSlope
+## As of 4pm 1-5-2021 Talked w/ Edgar, he said to check if there's a correlation b/w meanAbsDiff values & low % mat zone
 
+### COMBINING DATAFRAMES
 # Prep Summary Table of Parameters for plotting
 AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv") %>%
   select(-X) %>%
@@ -308,36 +314,68 @@ WholeRILSet_PercentofMatZone = read.csv("~/Desktop/01-04-2021_WholeRILSet_Percen
   select(-X) %>%
   rename(fileName = filename) %>%
   group_by(fileName)
+# Combine 2 dataframes above, keeps all fileName columns (they're identical), so no issue like I had with merge()
+data = cbind(AllRILs_SummaryParameters, WholeRILSet_PercentofMatZone)
+identical(data[['fileName']],data[['fileName1']]) # Yes, these are identical columns
+write.csv(data, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILsSummaryParameters-withPercentMatZone.csv")
 
-tmp = cbind(WholeRILSet_PercentofMatZone$percentofMatZone, AllRILs_SummaryParameters$meanAbsDiff)
-plot(tmp)
+### PLOTTING
+# Linear modeling to get slope/intercept for plot below
+dataCrunch <- lm(percentofMatZone ~ meanAbsDiff, data) # Intercept = 6.103, meanAbsDiff = 57.211  
+summary(dataCrunch)
 # Plot percentMatZone vs meanAbsDiff
 ## Is there a correlation b/w high/low meanAbsDiff & % of points in mat zone -> Answer: Nope.
 ggplot(AllRILs_SummaryParameters, aes(x = AllRILs_SummaryParameters$meanAbsDiff, y = WholeRILSet_PercentofMatZone$percentofMatZone)) +
   geom_point() +
+  geom_abline(intercept = 6.103, slope = 57.211) +
   xlab("meanAbsDiff") +
   ylab("Percent of Pos Points in Maturation Zone") +
   ggtitle("") +
   theme_bw()
 
+# Linear modeling for slope & intercept for plot below
+dataCrunch2 <- lm(meanAbsDiff ~ percentofMatZone, data) # Intercept = 6.103, meanAbsDiff = 57.211  
+summary(dataCrunch2)
+
 # Same as above, but reversed axes
 ggplot(WholeRILSet_PercentofMatZone, aes(x = WholeRILSet_PercentofMatZone$percentofMatZone, AllRILs_SummaryParameters$meanAbsDiff)) +
   geom_point() +
-  ylab("Mean Absolute Difference") +
+  geom_abline(intercept = 1.084e-01, slope = 3.241e-04) +
   xlab("Percent of Position Points in Maturation Zone") +
+  ylab("Mean Absolute Difference") +
   ggtitle("") +
   theme_bw()
 
-# Plot to see if there's correlation b/w percentofMatZone & matSlope
-## There's a correlation: As the % of points in mat zone increases, so does the slope of the last 10 vel curve points
-ggplot(WholeRILSet_PercentofMatZone, aes(x = WholeRILSet_PercentofMatZone$percentofMatZone, AllRILs_SummaryParameters$matSlope)) +
-  geom_point() +
-  xlab("Percent of Position Points in Maturation Zone") +
-  ylab("Slope of Last 10 Velocity Curve Points") +
-  ggtitle("") +
-  theme_bw()
+# There's no apparent correlation b/w meanAbsDiff and %ofMaturation Zone...
 
 #######################################################################################################################################
+
+
+### Create dataset that removes the 56 roots without mat zones
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv") %>%
+  select(-X) %>%
+  group_by(fileName)
+data = cbind(AllRILs_SummaryParameters, WholeRILSet_PercentofMatZone)
+identical(data[['fileName']],data[['fileName1']]) # Yes, these are identical columns
+data = data.frame(data)
+# Removes roots wth no maturation zone from dataset, leaving 1575 total roots
+data = data %>%
+  filter(percentofMatZone > 0.0)
+# Write data to csv for later:
+write.csv(data, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedNoMatZoneRoots.csv")
+
+### Create dataset that removes 100 roots with few points in the mat zone
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv") %>%
+  select(-X) %>%
+  group_by(fileName)
+data = cbind(AllRILs_SummaryParameters, WholeRILSet_PercentofMatZone)
+identical(data[['fileName']],data[['fileName1']]) # Yes, these are identical columns
+data = data.frame(data)
+# Removes roots wth little (<0.5%) maturation zone from dataset, leaving 1497 total roots
+data = data %>%
+  filter(percentofMatZone > 0.5)
+# Write data to csv for later:
+write.csv(data, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedLittleMatZoneRoots.csv")
 
 ```
 # Note: The following code chunks are copied from combineResStructures.Rmd to have one Analysis Script instead of several scripts doing partial work
@@ -513,8 +551,7 @@ write.csv(AllRILs_SummaryParameters, "~/Desktop/pux1Imaging/pux1_Analysis/2020_1
 # Problem: also loads in rownames as 1st column, fix this?
 AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv")
 
-
-
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedLittleMatZoneRoots.csv")
 
 # Variable for threshold of replicate numbers, may be used later so code is dynamic
 # SAMPLETHRESH = 8
@@ -527,7 +564,7 @@ AllRILs_nParameters = AllRILs_SummaryParameters %>%
   # filter(n >= SAMPLETHRESH)
 
 # Save table with RIL & respective number of samples
-write.csv(AllRILs_nParameters, "~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_nParameters.csv")
+write.csv(AllRILs_nParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_nParameters-removedLittleMatZoneRoots.csv")
 
 #############################################################################################
 ################ Use this if need to level out sample numbers across dataset ################
@@ -578,6 +615,28 @@ write.csv(AllRILs_nParameters, "~/rildata/rildata_realfullDataset/2020_12_07_All
 
 ```
 
+```{r parameter-distributions-all-roots}
+# Taking a look at the distribution of parameters with new dataset that doesn't contain outliers (roots without a mat zone) nor RIL89 (too few samples)
+data = read.csv("~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedNoMatZoneRoots.csv")
+data %>%
+  select(contains("RIL89")) # doesn't work, select looks for columns... how to filter data by value name??
+# Moving on for my sanity...
+
+# Note: k and n still very skewed left, will need to do log transformation & try again! (code for that is below)
+ggplot(data, aes(n)) +
+  geom_density()
+ggplot(data, aes(k)) +
+  geom_density()
+
+ggplot(data, aes(vf)) +
+  geom_density()
+
+ggplot(data, aes(x0)) +
+  geom_density()
+
+
+```
+
 ```{r log(Parameter)-stats-by-RIL}
 # This code chunk is to average parameters per RIL to create a table for the input of the R/qtl2 package
 ## Uses output from previous code chunk "shorten-fileName-to-be-RILnumbers"
@@ -589,10 +648,10 @@ sd() # st dev of that RIL's parameter
 var() # variance of that RIL's parameter
 tally() # No. of samples for each RIL
 
-# Load in csv with corrected sample size data
-# AllRILs_SummaryParameters = read.csv("~/rildata/2020_08_23_AllRILs_CorrectedSampleSize_SummaryParameters.csv")
-AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv")
+# Load in csv with data
+AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedNoMatZoneRoots.csv")
 AllRILs_SummaryParameters = read.csv("~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_pux1Day3_SummaryParameters.csv")
+
 
 # Take log of all parameters to produce more normal data
 AllRILs_logParameters = AllRILs_SummaryParameters %>%
@@ -613,7 +672,7 @@ AllRILs_AveragedParameters = AllRILs_logParameters %>%
   # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # group_by(genotype) %>% 
-  select(-X, -fileName) %>%
+  select(-X, -fileName, -fileName1) %>%
   # select(-X, -fileName, -matSlope, -meanAbsDiff) %>% # Use if want to remove fitting metrics from dataset
   summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
 
@@ -621,21 +680,21 @@ AllRILs_MedianParameters = AllRILs_logParameters %>%
   # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # group_by(genotype) %>%
-  select(-fileName, -X) %>%
+  select(-fileName, -X, -fileName1) %>%
   summarise_each(funs(median))
 
 AllRILs_StDevParameters = AllRILs_logParameters %>%
   # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # group_by(genotype) %>%
-  select(-X, -fileName) %>%
+  select(-X, -fileName, -fileName1) %>%
   summarise_each(funs(sd)) 
 
 AllRILs_VarianceParameters = AllRILs_logParameters %>%
   # mutate(RIL = as.numeric(RILs)) %>%
   group_by(RILs) %>%
   # group_by(genotype) %>%
-  select(-X, -fileName) %>%
+  select(-X, -fileName, -fileName1) %>%
   summarise_each(funs(var))
 
 # AllRILs_nParameters = AllRILs_logParameters %>%
@@ -645,10 +704,10 @@ AllRILs_VarianceParameters = AllRILs_logParameters %>%
 #   tally()
 
 # Save all files from above
-write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_AveragedParameters.csv")
-write.csv(AllRILs_MedianParameters, "~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_MedianParameters.csv")
-write.csv(AllRILs_StDevParameters, "~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_StDevParameters.csv")
-write.csv(AllRILs_VarianceParameters, "~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_VarianceParameters.csv")
+write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_AveragedParameters-removedLittleMatZoneRoots.csv")
+write.csv(AllRILs_MedianParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_MedianParameters-removedLittleMatZoneRoots.csv")
+write.csv(AllRILs_StDevParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_StDevParameters-removedLittleMatZoneRoots.csv")
+write.csv(AllRILs_VarianceParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_VarianceParameters-removedLittleMatZoneRoots.csv")
 # write.csv(AllRILs_nParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_nParameters.csv")
 
 
@@ -658,6 +717,7 @@ write.csv(AllRILs_StDevParameters, "~/Desktop/pux1Imaging/pux1_Analysis/PRE-OUTL
 write.csv(AllRILs_VarianceParameters, "~/Desktop/pux1Imaging/pux1_Analysis/PRE-OUTLIERTEST_2020_12_08_pux1Day3_VarianceParameters.csv")
 
 ```
+
 
 ```{r brief-outlier-testing}
 # install.packages("outliers")

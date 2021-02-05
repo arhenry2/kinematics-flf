@@ -1,0 +1,135 @@
+---
+title: "GrowthCurveReparameterization"
+output: html_document
+date: "5 February 2021"
+---
+
+```{r setup, include=FALSE}
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(naniar)
+library(neldermead)
+
+```
+
+# Reparameterizing the REGR curves by calculating:
+  * height (Vmax?),
+  * width of growth zone (20% definition, as w/ maturation zone), 
+  * symmetry (slopes on either side of curve?), & 
+  * position of Vmax
+
+```{r gather-materials}
+# Overall:
+# I need the growth curves of each root to calculate the height, eidth, etc from all of them
+# Final output: dataframe that has the height, width, symmetry & position of Vmax for every root
+# Final-final output: average these parameters for each RIL & run this as the phenotypes in my QTLCode.R
+
+
+# Start with sample dataset:
+masterPath <- "~/Desktop/RILPop_tmp/"
+res <- processMasterFolder(masterPath, 10)
+
+
+# How am I going to get these curves...?
+# return REGR values in dataframes... pos & REGR, where in the code did I have that??
+
+```
+
+```{r data-crunch-renameMe}
+## Have for loop to make dataframes of pos & REGR values (growth curve)
+## Have function that calculates each growth curve's parameters
+## Then have for loop that utilizes that function^
+## Now this is how we code!
+
+# for loop to make pos & REGR input for the following function
+growthCurveDescriptors <- data.frame(filename = c(), Vmax = c(), positionVmax = c(), symmetry = c(), growthZoneWidth = c())
+
+### HOLD UP: Need to use dataframe that excludes root without maturation zones!!!
+## This dataset is saved here: "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedLittleMatZoneRoots.csv")
+
+
+
+# Takes in: dataframe of pos & REGR values
+# Does: calculates descriptors of the growth (REGR) curve
+# Output: dataframe containing descriptors of growth curve w/ fileName of root
+functionName = function(curve){
+  # Calculate Vmax of growth curve
+  maxREGR = max(fittedREGR) # finds Vmax
+
+
+  
+  # Calculate position of Vmax
+  
+  
+  # Calculate width of growth zone
+    ## % of mat zone code on line ~218 of RILSetAnalysisScript.Rmd
+  
+  # Calculate symmetry of growth zone
+  
+  
+  
+}
+
+
+for (i in something){
+  
+  
+}
+
+
+```
+
+```{r draft-with-code-from-RILSet...Rmd}
+percentofMatZone <- data.frame(filename = c(), percentofMatZone = c())
+
+for (i in 1:length(res)){
+  for(j in 1:length(res[[i]]$rawData)){
+    rawData <- as.data.frame(res[[i]]$rawData[[j]]) 
+    fileName = rawData$fileName[j]
+    fileName = str_split(fileName, '/', simplify = TRUE)[,8]
+    print(fileName)
+
+    pos = c(1:3000)
+    # Get velocity fits for example data
+    fittedVel = flf(pos, 
+                 res[[i]]$summary_table[2]$x0[j],	
+                 res[[i]]$summary_table[3]$vf[j],	
+                 res[[i]]$summary_table[4]$k[j],	
+                 res[[i]]$summary_table[5]$n[j])
+
+    # Get REGR fits for example data
+    fittedREGR <- REGR(pos, 
+                   res[[i]]$summary_table[2]$x0[j],	
+                   res[[i]]$summary_table[3]$vf[j],	
+                   res[[i]]$summary_table[4]$k[j],	
+                   res[[i]]$summary_table[5]$n[j],
+                   1)
+
+    # REGRfit = data.frame(cbind(pos, fittedREGR))
+    maxREGR = max(fittedREGR) # finds Vmax
+    per = 0.2 # percentage of area under the curve we want
+    maxVel = max(fittedVel) # finds vf
+  }
+}
+```
+
+```{r for-loop-using-above-function}
+
+```
+
+
+```{r averaging-each-RIL}
+# Copy code from end of RILSetAnalysisScript.Rmd
+
+
+# Save work into a csv
+
+```
+

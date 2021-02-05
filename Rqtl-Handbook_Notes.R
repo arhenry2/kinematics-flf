@@ -48,12 +48,17 @@ data(hyper)
 # calc.genoprob() = calc the conditional QTL genotype prob, given the available marker data
 # Using step = 2.5 as a course grid to increase computational speed (use higher for QTLCode.R?)
 hyper <- calc.genoprob(hyper, step = 2.5, err = 0.001)
+operm <- scanone(hyper, n.perm = 1000, verbose = FALSE) # this took 1.5 minutes to complete
+# see how big hyper dataset is compared to yours
 
-# cantwo() = 2-D, 2-QTL scan & default analysis is max likelihood via EM algorithm
-# verbose=FALSE to reduce tracing information
+# scantwo() = 2-D, 2-QTL scan & default analysis is max likelihood via EM algorithm
+# verbose=FALSE to reduce tracing informationw
 out2 <- scantwo(hyper, verbose=FALSE)
 # Plot LOD scores from 2-D scan for selected chr
 plot(out2, chr=c(1,4,6,7,15))
+
+
+
 
 
 

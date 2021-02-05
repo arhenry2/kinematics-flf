@@ -3,10 +3,10 @@
 
 library(data.table)
 library(qtl2)
+# library(qtl)
 
 # Folder with all of the input files for this R script
-# setwd("~/ashleyhenry/Desktop/QTL_Wu/SamebutwithCviLer")
-setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
+setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
 
 ##################################################################################################
 ########################## Use this chunk if need to add leading zeros ###########################
@@ -33,7 +33,7 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
 ################################### Mapping #####################################################
 # read json object which is calling the MAP, NUM, and Pheno within rQTLmeta
 # CT <-read_cross2("CvixLer.working.json") # can use this if in correct directory
-  CT <- read_cross2("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL/CvixLer.working.json")
+  CT <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
   CT   # summary; crosstype "riself" for 2-way RIL by selfing 
   # names(CT)
   # head(CT$geno)
@@ -50,21 +50,19 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
   m1 <- maxmarg(pr)
 # Estimate the numbers of crossovers in each individual on each chromosome
   xo1 <- count_xo(m1) # produced dataframe with RILs vs Chr 1-5, filled in w/ zeros (no crossovers?)
+# Calculate kinship matrix for individuals (accounting for relationship among indiv, i.e. including polygenic effect)
+# loco = Leave One Chromosome Out, method (scan each chromosome using a kinship matrix that is calculated using data from all other chromosomes)
   k_loco <- calc_kinship(pr, "loco") # produced list of lists containing #s from 0.7-0.9 (what is this??)
-# QTL mapping. cols: 1=x0, 2=vf, 3=k, 4=n (I think) 
 
-## Use when selecting a range of columns, make sure to follow through in scan1perm() below
-  # out <- scan1(pr, CT$pheno[,2:6], k_loco, cores = 4) 
-# Use when selecting specific columns
-  out <- scan1(pr, CT$pheno[,c(1,2,6,7)], k_loco, cores = 4) 
-  # Attempting scantwo function, as of 9.9 it's not going well...
-  # out2 <- scantwo(pr, CT$pheno[,c(1:4)], k_loco, verbose=FALSE)
-  # 
-  # plot(out2, chr=c(1:5))
+## Perform genome scan by Haley-Knott regression
+# Output of scan1() is matrix of LOD scores, positions x phenotypes
+# Selecting phenotype columns & make sure to indicate the same columns in scan1perm() below
+  out <- scan1(pr, CT$pheno[,c(1,2,8,9)], k_loco, cores = 4) 
+  
   summary(out)
   
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2,6,7)], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2,8,9)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = 1000, perm_Xsp = FALSE,
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
@@ -73,12 +71,22 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
 # ymx <- maxlod(out) # max lod score
 
 ##### Finding LOD peaks
+# 
   peaks <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
+  # peaks_fullDataset <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
+  # peaks_noMatZone <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
+  # peaks_littleMatZone <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
+  
   peaks
 
-##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = k; lodcolumn 4 = n
-  # plot(out, map, lodcolumn = 1, col = rgb(0, 0, 0, 0.5), main = "QTL Map for Average Parameter Data") # vf = black
-  plot(out, map, lodcolumn = 1, ylim = c(0,9), col = rgb(0, 0, 0, 0.5), main = "QTL Map for ASHLEY Averaged Parameters") # x0 = black
+  ### Testing Bayes peaks (if there are multiple peaks on one chromosome, like parameters k and n on chr 1)
+  ## Saw this on Broman's website: https://kbroman.org/qtl2/assets/vignettes/user_guide.html#Finding_LOD_peaks,
+  ### He says to use this with caution... BUT WHY?? WHAT IS BAYES?! WHAT IS PEAKDROP?!
+  lod_int(out, map, lodcolumn=2, chr=1, peakdrop=1.8, drop=1.5) #also works on lodcolumn=2 (vf)
+  
+##### QTL Mapping Plots: lodcolumn 1 = x0; lodcolumn 2 = vf; lodcolumn 3 = log(k); lodcolumn 4 = log(n)
+  ymx <- maxlod(out)
+  plot(out, map, lodcolumn = 1, ylim=c(0, ymx*1.02), col = rgb(0, 0, 0, 0.5), main = "QTL Map for Averaged Parameters") # x0 = black
   plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # vf = red
   plot(out, map, lodcolumn = 3, col = rgb(0, 0, 1, 0.5), add = TRUE) # log(k) = blue
   plot(out, map, lodcolumn = 4, col = rgb(0, 1, 0, 0.5), add = TRUE) # log(n) = green
@@ -91,79 +99,69 @@ setwd("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL")
   # abline(h = sig[,5], col = rgb(0.4, 0, 0.6, 0.5)) # log(n) = violet
   legend("topright", lwd = 3, col = c(rgb(0, 0, 0, 0.5), rgb(1, 0, 0, 0.5), rgb(0, 0, 1, 0.5), rgb(0, 1, 0, 0.5), rgb(0.4, 0, 0.6, 0.5)), colnames(out), bty = "n")
 
-plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
-                                      ylim = c(0,7), main = paste0(colnames(out)[2]))
-dev.off()
+# plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
+                                      # ylim = c(0,7), main = paste0(colnames(out)[2]))
+# dev.off()
 
 
 #####################################################################################################
 # Load in geno data & see Landsberg erecta occurrences & pick all lines w/ Ler at Marker 1
 ## Note: This only extracts occurrences of L, it doesn't connect the phenotype at that marker location;
 ###     I ditched this idea 10-20-2020 when I found how to make pheno v geno plots (below: plot_pxg())
-geno = read.csv("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL/ALFP_geno.csv")
-geno1L = geno %>%
-  select(PVV4) %>%
-  filter(PVV4 == 'L')
+# library(tidyverse)
+# geno = read.csv("~/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL/ALFP_geno.csv")
+# geno1L = geno %>%
+#   select(PVV4) %>%
+#   filter(PVV4 == 'L')
 
 #####################################################################################################
-####################################### Try again 2020-10-20 ########################################
-#####################################################################################################
-# Grabs pheno and geno data at a specific marker location
-g <- maxmarg(pr, map, chr=1, pos=0, return_char=TRUE, minprob = 0)
+################################# Allele Effect at Specified Marker #################################
+############################################ 2020-10-20 #############################################
+# Grabs pheno and geno data at a specific marker location (chromosome & position)
+g <- maxmarg(pr, map, chr = 1, pos = 21.509786, return_char = TRUE, minprob = 0)
 # Plots the phenotypes and genotype at a marker location
 plot_pxg(g, CT$pheno[,"x0"], ylab="x0", SEmult=NULL) +
   title(main="Allele effect at Marker PVV4 on Chr 1")
 
+# Find number of samples for each allele
+library(tidyverse)
+g = data_frame(g)
+data_LL = g %>%
+  filter(g == "LL")
+count_LL = data_LL %>%
+  count(data_LL = "LL")
+  
+data_CC = g %>%
+  filter(g == "CC")
 
-
-
-
-
-
-
-
-
-# Trying to read in my data in a "cross" format to use Broman's package better than this code already does...
-mydata <- read.cross(format = c("csvs"), 
-                     dir = "/Users/ashleyhenry/Desktop/QTL_WuPracticewithSteveDeslauriers/Ashley_QTL", 
-                     genfile = "ALFP_geno.csv", 
-                     mapfile = "Candace_gmap.csv", 
-                     phefile = "2020_10_20_NATHAN_AllRILs_AveragedParameters.csv", 
-                     na.strings = c("-", "NA", "H"), 
-                     genotypes = c( "L": 1, "C": 2), 
-                     alleles = c("L", "C"))
-
-
-# Example dataset from plotPXG() R info page | 10-20-2020
-data(listeria)
-mname <- find.marker(listeria, 5, 28) # marker D5M357, found by chr & pos (i.e. 5, 28)
-plotPXG(listeria, mname)
-
-plotPXG(CT, "PVV4") # Error in plotPXG(CT, "PVV4") : Input should have class "cross"
-
-# Then plot the averages in the Cvi x Ler plot for that marker
-## See if there's a significant difference here
-## This is Nathan's way of QTL mapping, the simplest of ways
-
-genoMarker1 = rbind(geno1C, geno1L) # just puts the L and C back together...
-
-
-par(mfrow = c(1,2))
-plotPXG(out, "")
-plotPXG(out, "")
-
-
+countCC = data_CC %>%
+  count(data_CC == "CC")
 
 
 #####################################################################################################
-###### Added by Ashley: Checking the marker regression at markers with the highest LOD scores #######
+####################################### Here on 2021-01-29 ##########################################
 #####################################################################################################
-# Plots geno v pheno to see data spread 
-## Compares averages between parent genotypes at that cM position
-par(mfrow = c(2,2))
-# Data = out, markers = ""
-plotPXG(out, "")
-plotPXG(out, "")
+# Calculate (using code from lines 122-139) how many RILs have the Ler vs Cvi allele at a specific marker
+## now I need to make a table containing:
+##  marker; chr; pos; parameter; number of LL alleles; number of CC alleles
+
+
+#  Make another table to find which RILs have highest and lowest parameter value at peaks
+## marker; chr; pos; parameter; RIL with highest parameter value; RIL with lowest parameter value
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #####################################################################################################
 ##### Allele effect #####
