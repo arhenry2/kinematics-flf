@@ -364,6 +364,8 @@ data = data %>%
 # Write data to csv for later:
 write.csv(data, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedNoMatZoneRoots.csv")
 
+
+################################################################################
 ### Create dataset that removes 100 roots with few points in the mat zone
 AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv") %>%
   select(-X) %>%
@@ -376,7 +378,7 @@ data = data %>%
   filter(percentofMatZone > 0.5)
 # Write data to csv for later:
 write.csv(data, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedLittleMatZoneRoots.csv")
-
+################################################################################
 ```
 # Note: The following code chunks are copied from combineResStructures.Rmd to have one Analysis Script instead of several scripts doing partial work
 

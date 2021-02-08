@@ -20,7 +20,7 @@ library(neldermead)
 ```
 
 # Reparameterizing the REGR curves by calculating:
-  * height (Vmax?),
+  * height (Vmax),
   * width of growth zone (20% definition, as w/ maturation zone), 
   * symmetry (slopes on either side of curve?), & 
   * position of Vmax
@@ -31,14 +31,9 @@ library(neldermead)
 # Final output: dataframe that has the height, width, symmetry & position of Vmax for every root
 # Final-final output: average these parameters for each RIL & run this as the phenotypes in my QTLCode.R
 
-
 # Start with sample dataset:
 masterPath <- "~/Desktop/RILPop_tmp/"
 res <- processMasterFolder(masterPath, 10)
-
-
-# How am I going to get these curves...?
-# return REGR values in dataframes... pos & REGR, where in the code did I have that??
 
 ```
 
@@ -48,46 +43,135 @@ res <- processMasterFolder(masterPath, 10)
 ## Then have for loop that utilizes that function^
 ## Now this is how we code!
 
-# for loop to make pos & REGR input for the following function
-growthCurveDescriptors <- data.frame(filename = c(), Vmax = c(), positionVmax = c(), symmetry = c(), growthZoneWidth = c())
-
-### HOLD UP: Need to use dataframe that excludes root without maturation zones!!!
-## This dataset is saved here: "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedLittleMatZoneRoots.csv")
+# Empty dataframe you'll fill in during the for loop (or function?)
+growthCurveDescriptors <- data.frame(filename = c(), Vmax = c(), vf = c(), positionVmax = c(), percentMatZone = c()) #, symmetry = c(), growthZoneWidth = c())
 
 
 
-# Takes in: dataframe of pos & REGR values
+
+# Takes in: fileName, dataframe of (pos,REGR) values, dataframe of (pos, vel) values
 # Does: calculates descriptors of the growth (REGR) curve
-# Output: dataframe containing descriptors of growth curve w/ fileName of root
-functionName = function(curve){
+# Output: dataframe containing each root's fileName, percentofMatZone, & descriptors of growth curve
+functionName = function(fileName, posVel, posREGR){
   # Calculate Vmax of growth curve
-  maxREGR = max(fittedREGR) # finds Vmax
-
-
+  Vmax = max(fittedREGR) # finds Vmax
+  # print(Vmax)
   
+  # Calculate vf
+  vf = max(fittedVel) # finds vf
+  # print(vf)
+
   # Calculate position of Vmax
-  
+  positionVmax = which(fittedREGR == Vmax)
+  # print(positionVmax)
   
   # Calculate width of growth zone
     ## % of mat zone code on line ~218 of RILSetAnalysisScript.Rmd
   
+  
   # Calculate symmetry of growth zone
   
   
+  # Add percentMatZone so you can remove roots with no mat zone
+  per = 0.2 # percentage of area under the curve we want
+  k = which((fittedREGR < Vmax*per) & (fittedVel > vf*0.5)) # reports row number/column number of the cases that are "true"
+
+  fittedVelofMatZone = fittedVel[k]
+  # plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
+
+  minVelofMatZone = min(fittedVelofMatZone) # find min value of vel that's in mat zone
+
+  # Somehow pulls rawData from for loop so that this works & data is consistent with fileName
+  rawDatainMatZone = which(rawData$vel > minVelofMatZone)
+  percentMatZone = (length(rawDatainMatZone)/length(res[[i]]$rawData[[j]]$vel))*100
   
+  # Combine all results from above into a list
+  ## This list format makes it easier to build these into a dataframe later
+  tmpData = list(fileName, Vmax, vf, positionVmax, percentMatZone)
+  return(tmpData)
+
 }
 
+# Test if function works with one root!
+## Note: This takes the last saved posVel & posREGR NOT the posVel associated with the fileName!!!
+## Note: This is set to fileName = "RIL1--RIL1_001_1.5--"
+# pos = c(1:3000) # change to 1500?
+# # Get velocity fits for example data
+# fittedVel = flf(pos,
+#                  res[[1]]$summary_table[2]$x0[1],
+#                  res[[1]]$summary_table[3]$vf[1],
+#                  res[[1]]$summary_table[4]$k[1],
+#                  res[[1]]$summary_table[5]$n[1])
+# 
+# # Get REGR fits for example data
+# fittedREGR <- REGR(pos, 
+#                    res[[1]]$summary_table[2]$x0[1],	
+#                    res[[1]]$summary_table[3]$vf[1],	
+#                    res[[1]]$summary_table[4]$k[1],	
+#                    res[[1]]$summary_table[5]$n[1],
+#                    1)
+#     
+# # Combine pos & Vel into dataframe
+# posVel = data.frame(cbind(pos, fittedVel))
+#     
+# # Combine pos & REGR into dataframe
+# posREGR = data.frame(cbind(pos, fittedREGR))
+# Once you're sure the fileName & data match, run the below code:
+right = functionName("RIL1--RIL1_001_1.5--", posVel, posREGR)
 
-for (i in something){
+
+# for loop to create dataframe of pos & REGR & create fileName
+for (i in 1:length(res)){
+  for(j in 1:length(res[[i]]$rawData)){
+    rawData <- as.data.frame(res[[i]]$rawData[[j]]) 
+    fileName = rawData$fileName[j]
+    fileName = str_split(fileName, '/', simplify = TRUE)[,8]
+    print(fileName)
+
+    pos = c(1:3000) # change to 1500?
+    # Get velocity fits for example data
+    fittedVel = flf(pos,
+                 res[[i]]$summary_table[2]$x0[j],
+                 res[[i]]$summary_table[3]$vf[j],
+                 res[[i]]$summary_table[4]$k[j],
+                 res[[i]]$summary_table[5]$n[j])
+
+    # Get REGR fits for example data
+    fittedREGR <- REGR(pos, 
+                   res[[i]]$summary_table[2]$x0[j],	
+                   res[[i]]$summary_table[3]$vf[j],	
+                   res[[i]]$summary_table[4]$k[j],	
+                   res[[i]]$summary_table[5]$n[j],
+                   1)
+    
+    # Combine pos & Vel into dataframe
+    posVel = data.frame(cbind(pos, fittedVel))
+    
+    # Combine pos & REGR into dataframe
+    posREGR = data.frame(cbind(pos, fittedREGR))
+    
+    # Put the above into the function
+    dataName = functionName(fileName, posVel, posREGR)
+    
+    tmp <- data.frame(filename = dataName[[1]], 
+                    Vmax = dataName[[2]], 
+                    vf = dataName[[3]],
+                    positionVmax = dataName[[4]],
+                    percentMatZone = dataName[[5]]) #,
+                    # symmetry = symmetry, 
+                    # growthZoneWidth = growthZoneWidth)
   
+  growthCurveDescriptors <- rbind(growthCurveDescriptors,tmp)
   
+  }
+
 }
 
 
 ```
 
 ```{r draft-with-code-from-RILSet...Rmd}
-percentofMatZone <- data.frame(filename = c(), percentofMatZone = c())
+# percentofMatZone <- data.frame(filename = c(), percentofMatZone = c())
 
 for (i in 1:length(res)){
   for(j in 1:length(res[[i]]$rawData)){
@@ -98,10 +182,10 @@ for (i in 1:length(res)){
 
     pos = c(1:3000)
     # Get velocity fits for example data
-    fittedVel = flf(pos, 
-                 res[[i]]$summary_table[2]$x0[j],	
-                 res[[i]]$summary_table[3]$vf[j],	
-                 res[[i]]$summary_table[4]$k[j],	
+    fittedVel = flf(pos,
+                 res[[i]]$summary_table[2]$x0[j],
+                 res[[i]]$summary_table[3]$vf[j],
+                 res[[i]]$summary_table[4]$k[j],
                  res[[i]]$summary_table[5]$n[j])
 
     # Get REGR fits for example data
@@ -115,7 +199,8 @@ for (i in 1:length(res)){
     # REGRfit = data.frame(cbind(pos, fittedREGR))
     maxREGR = max(fittedREGR) # finds Vmax
     per = 0.2 # percentage of area under the curve we want
-    maxVel = max(fittedVel) # finds vf
+    vf = max(fittedVel) # finds vf
+    print(vf)
   }
 }
 ```
