@@ -44,10 +44,7 @@ res <- processMasterFolder(masterPath, 10)
 ## Now this is how we code!
 
 # Empty dataframe you'll fill in during the for loop (or function?)
-growthCurveDescriptors <- data.frame(filename = c(), Vmax = c(), vf = c(), positionVmax = c(), percentMatZone = c()) #, symmetry = c(), growthZoneWidth = c())
-
-
-
+growthCurveDescriptors <- data.frame(filename = c(), Vmax = c(), vf = c(), positionVmax = c(), growthZoneWidth = c(), percentMatZone = c()) #, symmetry = c())
 
 # Takes in: fileName, dataframe of (pos,REGR) values, dataframe of (pos, vel) values
 # Does: calculates descriptors of the growth (REGR) curve
@@ -58,37 +55,49 @@ functionName = function(fileName, posVel, posREGR){
   # print(Vmax)
   
   # Calculate vf
-  vf = max(fittedVel) # finds vf
-  # print(vf)
+    vf = max(fittedVel) # finds vf
+    # print(vf)
 
   # Calculate position of Vmax
-  positionVmax = which(fittedREGR == Vmax)
-  # print(positionVmax)
+    positionVmax = which(fittedREGR == Vmax)
+    # print(positionVmax)
   
   # Calculate width of growth zone
     ## % of mat zone code on line ~218 of RILSetAnalysisScript.Rmd
+    # percentage of area under the curve that defines the growth zone
+    per = 0.2 
   
+    # Reports index number (position values in this case) of the cases that are "true"
+    ## Finds fittedREGR that are greater than 0.2(Vmax), 
+    ## Only reports REGR values in growth zone
+    growthZone = which((fittedREGR > Vmax*per))
+  
+    # Try plotting what's in 'm'
+    fittedREGRofMatZone = fittedREGR[growthZone]
+    # Plots selected pos & REGR values to visually see if I grabbed the data I intended
+    # plot(pos[growthZone], fittedREGRofMatZone, ylim = c(0, max(Vmax)), xlim = c(0, 2500))
+  
+    widthGrowthZone = length(growthZone)
   
   # Calculate symmetry of growth zone
   
   
   # Add percentMatZone so you can remove roots with no mat zone
-  per = 0.2 # percentage of area under the curve we want
-  k = which((fittedREGR < Vmax*per) & (fittedVel > vf*0.5)) # reports row number/column number of the cases that are "true"
+    k = which((fittedREGR < Vmax*per) & (fittedVel > vf*0.5)) # reports row number/column number of the cases that are "true"
 
-  fittedVelofMatZone = fittedVel[k]
-  # plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
+    fittedVelofMatZone = fittedVel[k]
+    # plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
 
-  minVelofMatZone = min(fittedVelofMatZone) # find min value of vel that's in mat zone
+    minVelofMatZone = min(fittedVelofMatZone) # find min value of vel that's in mat zone
 
-  # Somehow pulls rawData from for loop so that this works & data is consistent with fileName
-  rawDatainMatZone = which(rawData$vel > minVelofMatZone)
-  percentMatZone = (length(rawDatainMatZone)/length(res[[i]]$rawData[[j]]$vel))*100
+    # Somehow pulls rawData from for loop so that this works & data is consistent with fileName
+    rawDatainMatZone = which(rawData$vel > minVelofMatZone)
+    percentMatZone = (length(rawDatainMatZone)/length(res[[i]]$rawData[[j]]$vel))*100
   
   # Combine all results from above into a list
-  ## This list format makes it easier to build these into a dataframe later
-  tmpData = list(fileName, Vmax, vf, positionVmax, percentMatZone)
-  return(tmpData)
+    ## This list format makes it easier to build these into a dataframe later
+    tmpData = list(fileName, Vmax, vf, positionVmax, widthGrowthZone, percentMatZone) #, symmetry)
+    return(tmpData)
 
 }
 
@@ -128,7 +137,7 @@ for (i in 1:length(res)){
     fileName = str_split(fileName, '/', simplify = TRUE)[,8]
     print(fileName)
 
-    pos = c(1:3000) # change to 1500?
+    pos = c(1:2500) # change to 1500? 3000?
     # Get velocity fits for example data
     fittedVel = flf(pos,
                  res[[i]]$summary_table[2]$x0[j],
@@ -150,6 +159,10 @@ for (i in 1:length(res)){
     # Combine pos & REGR into dataframe
     posREGR = data.frame(cbind(pos, fittedREGR))
     
+    # Plot growth curves to see differences b/w RILs
+    ## Note: remove this when going through full dataset!
+    plot(posREGR$fittedREGR ~ posREGR$pos)
+
     # Put the above into the function
     dataName = functionName(fileName, posVel, posREGR)
     
@@ -157,15 +170,50 @@ for (i in 1:length(res)){
                     Vmax = dataName[[2]], 
                     vf = dataName[[3]],
                     positionVmax = dataName[[4]],
-                    percentMatZone = dataName[[5]]) #,
-                    # symmetry = symmetry, 
-                    # growthZoneWidth = growthZoneWidth)
+                    growthZoneWidth = dataName[[5]],
+                    percentMatZone = dataName[[6]])#,
+                    # symmetry = dataName[[7]])
   
   growthCurveDescriptors <- rbind(growthCurveDescriptors,tmp)
   
   }
 
 }
+
+
+
+# plot REGR of RIL1--RIL1_001_1.5-- & RIL86_2--RIL86_003_4-- copy
+## this is to check that width of growth zone is correct
+fittedVel = flf(pos,
+                 res[[4]]$summary_table[2]$x0[1],
+                 res[[4]]$summary_table[3]$vf[1],
+                 res[[4]]$summary_table[4]$k[1],
+                 res[[4]]$summary_table[5]$n[1])
+
+# Get REGR fits for example data
+fittedREGR <- REGR(pos,
+                   res[[4]]$summary_table[2]$x0[1],
+                   res[[4]]$summary_table[3]$vf[1],
+                   res[[4]]$summary_table[4]$k[1],
+                   res[[4]]$summary_table[5]$n[1],
+                   1)
+
+# Combine pos & Vel into dataframe
+posVelRIL1 = data.frame(cbind(pos, fittedVel))
+posVelRIL86 = data.frame(cbind(pos, fittedVel))
+
+# Combine pos & REGR into dataframe
+posREGRRIL1 = data.frame(cbind(pos, fittedREGR))
+posREGRRIL86 = data.frame(cbind(pos, fittedREGR))
+
+plot(posREGRRIL1$fittedREGR ~ posREGRRIL1$pos)
+plot(posREGRRIL86$fittedREGR ~ posREGRRIL86$pos)
+
+
+
+# NOW THAT I HAVE A DATAFRAME WITH ALL OF THE DESCRIPTORS OF REGR CURVE...
+## I need to remove the roots without a maturation zone!
+## Note: Use code from RILSetAnalysisScript.Rmd
 
 
 ```
