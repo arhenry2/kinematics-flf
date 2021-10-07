@@ -1,0 +1,67 @@
+---
+title: "Attempts to Overlap Candace & Ashley QTL Maps"
+output: html_document
+date: 2021-03-22
+---
+
+```{r setup, include=FALSE}
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(naniar)
+library(neldermead)
+```
+
+
+```{r overlapping-qtl-plots}
+tipAngles = read.csv("~/Desktop/2021-03-22_QTL_TipAngle_HourIncrements-LODscores.csv", header = TRUE) %>%
+  select(-T120, -T180)
+  
+descriptors = read.csv("~/Desktop/2021-03-22_QTL_Descriptors-LODscores.csv", header = TRUE) %>%
+  select(-X)
+
+data = cbind(tipAngles, descriptors) %>%
+  select(-X) %>%
+  mutate(chr = c(1:340))
+
+# Test with one phenotype
+ggplot(data, aes(x = chr)) + # this won't work b/c markers are names, not nnumber sequences...
+  geom_line(aes(y = Vmax))
+
+dataMelted = melt(data, id.var = "chr")
+
+# Test with all phenotypes
+ggplot(data = dataMelted, aes(x = chr)) + 
+  geom_line(aes(y = value, color = variable, label = variable)) +
+  ylab("LOD Score") +
+  xlab("") +
+  ggtitle("Growth Curve Descriptors and Tip Angles at 4 and 5 Hour Timepoints") +
+  scale_color_brewer(palette = "Spectral") +
+  theme_bw()
+
+
+```
+
+
+
+```{r Vmax-vs-vf}
+# plotting vmax and vf to see if they're the same variable (they're correlated tightly, but slightly different...? Anywho, they have dif sig qtl peaks)
+VmaxVf = read.csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_02_08_growthCurveDescriptors_Averaged-removedNoMatZoneRoots-nopercentMatZone.csv")
+
+plot(VmaxVf$vf ~ VmaxVf$Vmax)
+
+```
+
+
+
+
+
+
+
+

@@ -118,7 +118,7 @@ fit_NelderMead <- function(y, z, ix0, ivf, ik, iN, loopValue){
 
 
 ####################################################################################
-#Flexible Logistic Function: Function from Morris & Silk 1992 equation (Equation 8)
+# Relative Elemental Growth Rate Function: Function from Morris & Silk 1992 (Equation 8)
 ####################################################################################
 REGR <- function(x, x0, vf, k, n, scale){
   v = flf(x, x0, vf, k, n)

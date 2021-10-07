@@ -318,7 +318,7 @@ ggplot(LerLongFormat, aes(x = Pos, y = value, color = variable)) +
 
 # Note for order of res structure: 
 # 1 = auxinCvi; 2 = auxinLer; 3 = ctrlCvi; 4 = ctrlLer
-parameters = res[[2]]$summary_table
+parameters = res[[1]]$summary_table
 
 # parameters = res[[2]]$summary_table
 # parameters = res[[3]]$summary_table

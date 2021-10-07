@@ -16,74 +16,84 @@ require(reshape2)
 library(dplyr)
 library(naniar)
 library(neldermead)
-
 ```
 
 # Reparameterizing the REGR curves by calculating:
-  * height (Vmax),
+  * height (maximum REGR),
   * width of growth zone (20% definition, as w/ maturation zone), 
-  * symmetry (slopes on either side of curve?), & 
-  * position of Vmax
+  * position of maximum REGR
+  * overall growth rate (vf)
 
 ```{r gather-materials}
-# Overall:
-# I need the growth curves of each root to calculate the height, eidth, etc from all of them
-# Final output: dataframe that has the height, width, symmetry & position of Vmax for every root
-# Final-final output: average these parameters for each RIL & run this as the phenotypes in my QTLCode.R
+# Test with sample dataset:
+# masterPath <- "~/Desktop/RILPop_tmp/"
+masterPath <- "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_RawData"
 
-# Start with sample dataset:
-masterPath <- "~/Desktop/RILPop_tmp/"
 res <- processMasterFolder(masterPath, 10)
 
+# Load in full RIL set
+load("~/rildata/rildata_realfullDataset/2020_12_07_res_RILPop_full.RData")
 ```
 
-```{r data-crunch-renameMe}
+```{r function-to-calc-REGRCurve-descriptors}
+# Overall Goals:
+# I need the growth curves of each root to calculate the height, eidth, etc from all of them
+# Final output: dataframe that has the height, width, symmetry & position of maxREGR for every root
+# Final-final output: average these parameters for each RIL & run this as the phenotypes in my QTLCode.R
+
+# Overview of Coding Plan:
 ## Have for loop to make dataframes of pos & REGR values (growth curve)
 ## Have function that calculates each growth curve's parameters
 ## Then have for loop that utilizes that function^
 ## Now this is how we code!
 
-# Empty dataframe you'll fill in during the for loop (or function?)
-growthCurveDescriptors <- data.frame(filename = c(), Vmax = c(), vf = c(), positionVmax = c(), growthZoneWidth = c(), percentMatZone = c()) #, symmetry = c())
+# Empty dataframe you'll fill in during the for loop
+growthCurveDescriptors <- data.frame(filename = c(), 
+                                     maxREGR = c(), 
+                                     vf = c(), 
+                                     positionMaxREGR = c(), 
+                                     growthZoneWidth = c(), 
+                                     percentMatZone = c()) #, 
+                                     # symmetry = c())
 
-# Takes in: fileName, dataframe of (pos,REGR) values, dataframe of (pos, vel) values
+# Takes in: fileName, dataframe of (pos,vel) values, dataframe of (pos,REGR) values
 # Does: calculates descriptors of the growth (REGR) curve
 # Output: dataframe containing each root's fileName, percentofMatZone, & descriptors of growth curve
 functionName = function(fileName, posVel, posREGR){
-  # Calculate Vmax of growth curve
-  Vmax = max(fittedREGR) # finds Vmax
-  # print(Vmax)
+ # Calculate maxREGR of growth curve
+    maxREGR = max(fittedREGR) # finds maxREGR
+  # print(maxREGR)
   
-  # Calculate vf
+ # Calculate vf
     vf = max(fittedVel) # finds vf
     # print(vf)
 
-  # Calculate position of Vmax
-    positionVmax = which(fittedREGR == Vmax)
-    # print(positionVmax)
+ # Calculate position of maxREGR
+    positionMaxREGR = which(fittedREGR == maxREGR)
+    # print(positionMaxREGR)
   
-  # Calculate width of growth zone
+ # Calculate width of growth zone
     ## % of mat zone code on line ~218 of RILSetAnalysisScript.Rmd
     # percentage of area under the curve that defines the growth zone
     per = 0.2 
   
     # Reports index number (position values in this case) of the cases that are "true"
-    ## Finds fittedREGR that are greater than 0.2(Vmax), 
+    ## Finds fittedREGR that are greater than 0.2(maxREGR), 
     ## Only reports REGR values in growth zone
-    growthZone = which((fittedREGR > Vmax*per))
+    growthZone = which(fittedREGR > maxREGR*per)
   
     # Try plotting what's in 'm'
     fittedREGRofMatZone = fittedREGR[growthZone]
     # Plots selected pos & REGR values to visually see if I grabbed the data I intended
-    # plot(pos[growthZone], fittedREGRofMatZone, ylim = c(0, max(Vmax)), xlim = c(0, 2500))
+    # plot(pos[growthZone], fittedREGRofMatZone, ylim = c(0, max(maxREGR)), xlim = c(0, 2500))
   
     widthGrowthZone = length(growthZone)
   
-  # Calculate symmetry of growth zone
+ # Calculate symmetry of growth zone
+    # STILL NEED TO DO THIS!!! as of 2021-02-08
   
-  
-  # Add percentMatZone so you can remove roots with no mat zone
-    k = which((fittedREGR < Vmax*per) & (fittedVel > vf*0.5)) # reports row number/column number of the cases that are "true"
+ # Add percentMatZone so you can remove roots with no mat zone
+    k = which((fittedREGR < maxREGR*per) & (fittedVel > vf*0.5)) # reports row number/column number of the cases that are "true"
 
     fittedVelofMatZone = fittedVel[k]
     # plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
@@ -94,14 +104,13 @@ functionName = function(fileName, posVel, posREGR){
     rawDatainMatZone = which(rawData$vel > minVelofMatZone)
     percentMatZone = (length(rawDatainMatZone)/length(res[[i]]$rawData[[j]]$vel))*100
   
-  # Combine all results from above into a list
+ # Combine all results from above into a list
     ## This list format makes it easier to build these into a dataframe later
-    tmpData = list(fileName, Vmax, vf, positionVmax, widthGrowthZone, percentMatZone) #, symmetry)
+    tmpData = list(fileName, maxREGR, vf, positionMaxREGR, widthGrowthZone, percentMatZone) #, symmetry)
     return(tmpData)
-
 }
 
-# Test if function works with one root!
+# Testing if function works with one root:
 ## Note: This takes the last saved posVel & posREGR NOT the posVel associated with the fileName!!!
 ## Note: This is set to fileName = "RIL1--RIL1_001_1.5--"
 # pos = c(1:3000) # change to 1500?
@@ -126,9 +135,10 @@ functionName = function(fileName, posVel, posREGR){
 # # Combine pos & REGR into dataframe
 # posREGR = data.frame(cbind(pos, fittedREGR))
 # Once you're sure the fileName & data match, run the below code:
-right = functionName("RIL1--RIL1_001_1.5--", posVel, posREGR)
+# right = functionName("RIL1--RIL1_001_1.5--", posVel, posREGR)
+```
 
-
+```{r for-loop-using-above-function}
 # for loop to create dataframe of pos & REGR & create fileName
 for (i in 1:length(res)){
   for(j in 1:length(res[[i]]$rawData)){
@@ -137,7 +147,8 @@ for (i in 1:length(res)){
     fileName = str_split(fileName, '/', simplify = TRUE)[,8]
     print(fileName)
 
-    pos = c(1:2500) # change to 1500? 3000?
+    pos = c(1:2500) # originally at 3000, but too many points
+    
     # Get velocity fits for example data
     fittedVel = flf(pos,
                  res[[i]]$summary_table[2]$x0[j],
@@ -161,108 +172,221 @@ for (i in 1:length(res)){
     
     # Plot growth curves to see differences b/w RILs
     ## Note: remove this when going through full dataset!
-    plot(posREGR$fittedREGR ~ posREGR$pos)
+    # plot(posREGR$fittedREGR ~ posREGR$pos)
 
     # Put the above into the function
     dataName = functionName(fileName, posVel, posREGR)
     
     tmp <- data.frame(filename = dataName[[1]], 
-                    Vmax = dataName[[2]], 
+                    maxREGR = dataName[[2]], 
                     vf = dataName[[3]],
-                    positionVmax = dataName[[4]],
+                    positionMaxREGR = dataName[[4]],
                     growthZoneWidth = dataName[[5]],
                     percentMatZone = dataName[[6]])#,
                     # symmetry = dataName[[7]])
   
   growthCurveDescriptors <- rbind(growthCurveDescriptors,tmp)
-  
-  }
-
-}
-
-
-
-# plot REGR of RIL1--RIL1_001_1.5-- & RIL86_2--RIL86_003_4-- copy
-## this is to check that width of growth zone is correct
-fittedVel = flf(pos,
-                 res[[4]]$summary_table[2]$x0[1],
-                 res[[4]]$summary_table[3]$vf[1],
-                 res[[4]]$summary_table[4]$k[1],
-                 res[[4]]$summary_table[5]$n[1])
-
-# Get REGR fits for example data
-fittedREGR <- REGR(pos,
-                   res[[4]]$summary_table[2]$x0[1],
-                   res[[4]]$summary_table[3]$vf[1],
-                   res[[4]]$summary_table[4]$k[1],
-                   res[[4]]$summary_table[5]$n[1],
-                   1)
-
-# Combine pos & Vel into dataframe
-posVelRIL1 = data.frame(cbind(pos, fittedVel))
-posVelRIL86 = data.frame(cbind(pos, fittedVel))
-
-# Combine pos & REGR into dataframe
-posREGRRIL1 = data.frame(cbind(pos, fittedREGR))
-posREGRRIL86 = data.frame(cbind(pos, fittedREGR))
-
-plot(posREGRRIL1$fittedREGR ~ posREGRRIL1$pos)
-plot(posREGRRIL86$fittedREGR ~ posREGRRIL86$pos)
-
-
-
-# NOW THAT I HAVE A DATAFRAME WITH ALL OF THE DESCRIPTORS OF REGR CURVE...
-## I need to remove the roots without a maturation zone!
-## Note: Use code from RILSetAnalysisScript.Rmd
-
-
-```
-
-```{r draft-with-code-from-RILSet...Rmd}
-# percentofMatZone <- data.frame(filename = c(), percentofMatZone = c())
-
-for (i in 1:length(res)){
-  for(j in 1:length(res[[i]]$rawData)){
-    rawData <- as.data.frame(res[[i]]$rawData[[j]]) 
-    fileName = rawData$fileName[j]
-    fileName = str_split(fileName, '/', simplify = TRUE)[,8]
-    print(fileName)
-
-    pos = c(1:3000)
-    # Get velocity fits for example data
-    fittedVel = flf(pos,
-                 res[[i]]$summary_table[2]$x0[j],
-                 res[[i]]$summary_table[3]$vf[j],
-                 res[[i]]$summary_table[4]$k[j],
-                 res[[i]]$summary_table[5]$n[j])
-
-    # Get REGR fits for example data
-    fittedREGR <- REGR(pos, 
-                   res[[i]]$summary_table[2]$x0[j],	
-                   res[[i]]$summary_table[3]$vf[j],	
-                   res[[i]]$summary_table[4]$k[j],	
-                   res[[i]]$summary_table[5]$n[j],
-                   1)
-
-    # REGRfit = data.frame(cbind(pos, fittedREGR))
-    maxREGR = max(fittedREGR) # finds Vmax
-    per = 0.2 # percentage of area under the curve we want
-    vf = max(fittedVel) # finds vf
-    print(vf)
   }
 }
+
+# Woot! growthCurveDescriptors is complete (minus symmetry, but want to make QTL map & compare to parameters)
+## Saving my hard work:
+# save(growthCurveDescriptors, file = "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors.csv")
+save(growthCurveDescriptors, file = "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021-10-07_growthCurveDescriptors.csv")
 ```
 
-```{r for-loop-using-above-function}
+```{r clean-up-data}
+# Clean-up includes: filename to only RIL number & removing roots without maturation zones
 
+# Shorten fileName to base
+# Makes a column of shortened RIL names by copying the fileName column
+## Make copy of fileName column called RILs
+growthCurveDescriptors$RILs <- growthCurveDescriptors$filename
+
+# Extracts the "RIL##" from fileName and fills in the "RILs" column
+## This works for RILs, but need to correct for Cvi & Ler
+growthCurveDescriptors$RILs <- str_extract(growthCurveDescriptors$RILs, "[A-Z]+[0-9]+")
+growthCurveDescriptors$RILs = str_extract(growthCurveDescriptors$RILs, "[0-9]+")
+
+
+## I need to remove the roots without a maturation zone (56 outliers)
+## Note: Use code from RILSetAnalysisScript.Rmd (~line 363)
+# growthCurveDescriptors = growthCurveDescriptors %>%
+#   filter(percentMatZone > 0.0)
+# Write data to csv
+write.csv(growthCurveDescriptors, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
+
+
+### Added 2021-10-07:
+# Same, but for Auxin Transport Mutants now
+growthCurveDescriptors$mutants <- growthCurveDescriptors$filename
+growthCurveDescriptors$mutants = str_extract(growthCurveDescriptors$mutants, "[A-Z]*[a-z]*[0-9]*")
+write.csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_10_07_growthCurveDescriptors.csv")
 ```
 
+```{r distributions-of-growth-curve-descriptors}
+# data = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
+data = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_10_07_growthCurveDescriptors.csv")
+
+# Density plots to see distribution of each REGR curve descriptor:
+## maxREGR: very Normally distributed!
+ggplot(data, aes(maxREGR)) +
+  geom_density()
+
+## vf: mostly normal, skewed right
+ggplot(data, aes(vf)) +
+  geom_density()
+
+## positionMaxREGR: very Normally distributed!
+ggplot(data, aes(positionMaxREGR)) +
+  geom_density()
+
+## growthZoneWidth: mostly normal, skewed right
+ggplot(data, aes(growthZoneWidth)) +
+  geom_density()
+
+# ## percentMatZone: vaguely Normal b/c of dropoff at 0% mat zone, slightly skewed right
+# ggplot(data, aes(percentMatZone)) +
+#   geom_density()
+
+# In conclusion: no log transformations are necessary before averaging these & sending to QTLCode.R! :)
+
+
+### Added 2021-10-07
+# Now use the Shapiro-Wilks Test for Normality for the root growth descriptors (aka QTL traits):
+shapiro.test(data$maxREGR) # W = 0.96986, p-value = 0.2503 -> doesn't pass Normality test
+shapiro.test(data$vf) # W = 0.95579, p-value = 0.06824 -> passes Normality test
+shapiro.test(data$positionMaxREGR) # W = 0.95357, p-value = 0.05555 -> passes Normality test
+shapiro.test(data$growthZoneWidth) # W = 0.99086, p-value = 0.9689 -> doesn't pass Normality test
+```
+
+```{r ttests-for-descriptors}
+AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_10_07_growthCurveDescriptors.csv")
+
+# abcb19
+abcb19 = AllRILs_SummaryParameters %>%
+  select(-X) %>%
+  filter(AllRILs_SummaryParameters$mutants == "abcb19")
+## abcb4
+abcb4 = AllRILs_SummaryParameters %>%
+  select(-X) %>%
+  filter(AllRILs_SummaryParameters$mutants == "b4")
+## pin2
+pin2 = AllRILs_SummaryParameters %>%
+  select(-X) %>%
+  filter(AllRILs_SummaryParameters$mutants == "pin2")
+## Col-0 (WT)
+Col = AllRILs_SummaryParameters %>%
+  select(-X) %>%
+  filter(AllRILs_SummaryParameters$mutants == "Col")
+
+# t-tests for maxREGR descripter
+qqplot(abcb19$maxREGR, runif(1000)) # will run for Col, pin2, abcb4, & abcb19
+maxREGR_Col_pin2 = t.test(Col$maxREGR, pin2$maxREGR, var.equal = FALSE) # p-value = 5.323e-06
+maxREGR_Col_abcb4 = t.test(Col$maxREGR, abcb4$maxREGR, var.equal = FALSE) # p-value = 5.415e-11
+maxREGR_Col_abcb19 = t.test(Col$maxREGR, abcb19$maxREGR, var.equal = FALSE) # p-value = 0.1253
+
+# t-tests for vf descriptor
+qqplot(pin2$vf, runif(1000)) # will run for Col, pin2, abcb4, & abcb19
+vf_Col_pin2 = t.test(Col$vf, pin2$vf, var.equal = FALSE) # p-value = 0.3758
+vf_Col_abcb4 = t.test(Col$vf, abcb4$vf, var.equal = FALSE) # p-value = 0.6575
+vf_Col_abcb19 = t.test(Col$vf, abcb19$vf, var.equal = FALSE) # p-value = 0.5287
+
+# t-tests for positionMaxREGR descriptor
+qqplot(abcb19$positionMaxREGR, runif(1000)) # will run for Col, pin2, abcb4, & abcb19
+positionMaxREGR_Col_pin2 = t.test(Col$positionMaxREGR, pin2$positionMaxREGR, var.equal = FALSE) # p-value = 7.692e-08
+positionMaxREGR_Col_abcb4 = t.test(Col$positionMaxREGR, abcb4$positionMaxREGR, var.equal = FALSE) # p-value = 0.0008747
+positionMaxREGR_Col_abcb19 = t.test(Col$positionMaxREGR, abcb19$positionMaxREGR, var.equal = FALSE) # p-value = 0.8535
+
+# t-tests for growthZoneWidth descriptor
+qqplot(pin2$growthZoneWidth, runif(1000)) # will run for Col, pin2, abcb4, & abcb19
+growthZoneWidth_Col_pin2 = t.test(Col$growthZoneWidth, pin2$growthZoneWidth, var.equal = FALSE) # p-value = 7.568e-05
+growthZoneWidth_Col_abcb4 = t.test(Col$growthZoneWidth, abcb4$growthZoneWidth, var.equal = FALSE) # p-value = 6.84e-07
+growthZoneWidth_Col_abcb19 = t.test(Col$growthZoneWidth, abcb19$growthZoneWidth, var.equal = FALSE) # p-value = 0.004319
+
+# Compare pin2 (upwards IAA flow) vs other mutants
+t.test(pin2$maxREGR, abcb4$maxREGR, var.equal = FALSE) # p-value = 0.8867
+t.test(pin2$maxREGR, abcb19$maxREGR, var.equal = FALSE) # p-value = 0.0001073
+t.test(pin2$vf, abcb4$vf, var.equal = FALSE) # p-value = 0.7502
+t.test(pin2$vf, abcb19$vf, var.equal = FALSE) # p-value = 0.2408
+t.test(pin2$positionMaxREGR, abcb4$positionMaxREGR, var.equal = FALSE) # p-value = 0.009554
+t.test(pin2$positionMaxREGR, abcb19$positionMaxREGR, var.equal = FALSE) # p-value = 7.268e-06
+t.test(pin2$growthZoneWidth, abcb4$growthZoneWidth, var.equal = FALSE) # p-value = 0.6795
+t.test(pin2$growthZoneWidth, abcb19$growthZoneWidth, var.equal = FALSE) # p-value = 0.01888
+
+# Compare abcb4 (shootwards IAA flow) vs abcb19 (rootwards IAA flow)
+t.test(abcb4$maxREGR, abcb19$maxREGR, var.equal = FALSE) # p-value = 1.375e-05
+t.test(abcb4$vf, abcb19$vf, var.equal = FALSE) # p-value = 0.4041
+t.test(abcb4$positionMaxREGR, abcb19$positionMaxREGR, var.equal = FALSE) # p-value = 0.005448
+t.test(abcb4$growthZoneWidth, abcb19$growthZoneWidth, var.equal = FALSE) # p-value = 0.001958
+```
 
 ```{r averaging-each-RIL}
-# Copy code from end of RILSetAnalysisScript.Rmd
+# Copied from end of RILSetAnalysisScript.Rmd, edited for efficiency
+# Info needed from RILs:
+mean() # average of that REGR Curve's descriptor
+median() # median of that REGR Curve's descriptor
+sd() # st dev of that REGR Curve's descriptor
+var() # variance of that REGR Curve's descriptor
+tally() # No. of samples for each RIL
 
+# Load in dataframe from csv file
+growthCurveDescriptors = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
 
-# Save work into a csv
+# Use summarise_each and funs() to calculate stats for all parameters
+## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
+## Removed X (rownames created from csv) and fileName column from dataframe (if necessary)
+## Calc'd chosen stat via summarise_each(funs())
+growthCurveDescriptors_Averaged = growthCurveDescriptors %>%
+  group_by(RILs) %>%
+  select(-X, -filename) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
+
+growthCurveDescriptors_Median = growthCurveDescriptors %>%
+  group_by(RILs) %>%
+  select(-X, -filename) %>%
+  summarise_each(funs(median))
+
+growthCurveDescriptors_StDev = growthCurveDescriptors %>%
+  group_by(RILs) %>%
+  select(-X, -filename) %>%
+  summarise_each(funs(sd)) 
+
+growthCurveDescriptors_Variance = growthCurveDescriptors %>%
+  group_by(RILs) %>%
+  select(-X, -filename) %>%
+  summarise_each(funs(var))
+
+# Note: RIL89 only has 3 roots, delete this from the final dataset pre-QTL analysis!
+growthCurveDescriptors_nSamples = growthCurveDescriptors %>%
+  group_by(RILs) %>%
+  select(-X, -filename) %>%
+  tally()
+
+# Save all work from above into csv files
+write.csv(growthCurveDescriptors_Averaged, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_Averaged-removedLittleMatZoneRoots.csv")
+write.csv(growthCurveDescriptors_Median, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_Median-removedLittleMatZoneRoots.csv")
+write.csv(growthCurveDescriptors_StDev, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_StDev-removedLittleMatZoneRoots.csv")
+write.csv(growthCurveDescriptors_Variance, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_Variance-removedLittleMatZoneRoots.csv")
+write.csv(growthCurveDescriptors_nSamples, "~/rildata/rildata_fullDataset/2021_02_08_growthCurveDescriptors_nSamples-removedLittleMatZoneRoots.csv")
+```
+
+# The End <3
+
+```{r oh-Lord-its-R-the-sequel}
+growthCurveDescriptors = read.csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_02_08_growthCurveDescriptors_Averaged-removedNoMatZoneRoots-nopercentMatZone.csv")
+
+# Plot positionMaxREGRvs growthZoneWidth to see if they're two separate variables
+## Answer: directly correlated, they're the same variable... dammit
+ggplot(data = growthCurveDescriptors, aes(x = growthZoneWidth)) +
+  geom_point(aes(y = positionMaxREGR)) +
+  ggtitle("MaxREGR Position vs Width of Growth Zone") +
+  xlab("Width of Growth Zone (px)") +
+  ylab("Position of MaxREGR (px)") +
+  theme_bw()
 
 ```
+
+
+
 

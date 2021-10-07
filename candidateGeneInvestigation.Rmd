@@ -1,0 +1,125 @@
+---
+title: "candidateGeneInvestigation.Rmd"
+date: 2021-06-17
+author: "Ashley Henry"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(naniar)
+```
+
+```{r load-in-data}
+
+############################################################################
+####### This was to draft code for the function in the next section! #######
+############# Ignore this code section and keep movin' forward #############
+############ Finished this and next code section on 2021-07-21 #############
+############################################################################
+
+data = read.csv("~/Desktop/CandidateGene_Investigation/RootExpressionbyPeak_withZeroExpression/vf_1-2729345-7740292.csv")
+
+# Average expression values by replicates
+data = data %>% 
+  mutate(avg_R_A = rowMeans(cbind(R.A_1, R.A_2), na.rm = T)) %>%
+  mutate(avg_R = rowMeans(cbind(R_1, R_2), na.rm = T))
+
+# Make distribution plot of expression values, manually select column
+ggplot(data, aes(x = avg_R_A)) + geom_histogram(binwidth = 500)
+# lol
+
+# Remove samples w/ zero expression from roots without apex
+dataNoZeroExp_R_A = data %>%
+  filter(data$avg_R_A > 10) %>%
+  select(-avg_R, -R_1, -R_2) %>%
+  group_by(Feature_ID)
+
+# Distribution plot
+ggplot(dataNoZeroExp_R_A, aes(x = avg_R_A)) + geom_histogram(binwidth = 100)
+
+# Remove samples w/ zero expression from roots with apex
+dataNoZeroExp_R = data %>%
+  filter(data$avg_R > 10) %>%
+  select(-avg_R_A, -R.A_1, -R.A_2)# %>%
+  # group_by(colnames(data)[1])
+
+combinedData = right_join(dataNoZeroExp_R_A, dataNoZeroExp_R, by = "Feature_ID")
+
+# Save name of peak for labeling csv file below
+n = colnames(data)[1]
+
+# Save work
+write.csv(combinedData, paste("~/Desktop/CandidateGene_Investigation/RootExpressionbyPeak/rootExp_", n, ".csv", sep=""), row.names=F)
+
+
+```
+
+```{r sameAsAbove-butaFunction}
+# Function
+filterExpressionValues <- function(cin) {
+  # Average expression values by replicates
+  data = data %>% 
+    mutate(avg_R_A = rowMeans(cbind(R.A_1, R.A_2), na.rm = T)) %>%
+    mutate(avg_R = rowMeans(cbind(R_1, R_2), na.rm = T))
+
+  # Remove samples w/ zero expression from roots without apex
+  dataNoZeroExp_R_A = data %>%
+    filter(data$avg_R_A > 10) %>%
+    select(-avg_R, -R_1, -R_2) %>%
+    group_by(Feature_ID)
+
+  # Remove samples w/ zero expression from roots with apex
+  dataNoZeroExp_R = data %>%
+    filter(data$avg_R > 10) %>%
+    select(-avg_R_A, -R.A_1, -R.A_2)
+  
+  # Combine datasets
+  combinedData = right_join(dataNoZeroExp_R, dataNoZeroExp_R_A, by = "Feature_ID")
+
+  return(combinedData)
+}
+
+# Have for loop to loop through csv files in directory, and that for loop uses this function
+dName = "~/Desktop/CandidateGene_Investigation/RootExpressionbyPeak_withZeroExpression"
+dataDir = dir(dName)
+
+for (d in 1:count(dataDir)) {
+
+  fin = paste(dName, "/", dataDir[d], sep = "")
+  cin = read.csv(fin)
+  print(dataDir[d])
+  
+  # Do function
+  filterExpressionValues(cin)
+  
+  # Save name of peak for labeling csv file below
+  n = dataDir[d]
+    
+  # Save work
+  write.csv(combinedData, paste("~/Desktop/CandidateGene_Investigation/RootExpressionbyPeak/rootExp_", n, ".csv", sep=""), row.names=F)
+}
+
+```
+
+```{r somethingName}
+
+
+
+
+
+
+```
+
+
+
+
+
+

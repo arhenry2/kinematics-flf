@@ -1,0 +1,54 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(naniar)
+library(neldermead)
+```
+
+
+```{r something}
+data = read_csv("~/Desktop/geneListToCrop.csv")
+View(data)
+
+
+# Try to remove .# on one column before whole dataframe
+tst = data$`vf:1:2729345..7740292`
+View(tst)
+data$`vf:1:2729345..7740292` = str_extract(data$`vf:1:2729345..7740292`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`vf:1:13524213..19234672` = str_extract(data$`vf:1:13524213..19234672`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`posVmax:1:2729345..7740293` = str_extract(data$`posVmax:1:2729345..7740293`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`growthZoneWidth:1:2729345..7740292` = str_extract(data$`growthZoneWidth:1:2729345..7740292`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`growthZoneWidth:1:7949090..19234672` = str_extract(data$`growthZoneWidth:1:7949090..19234672`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`growthZoneWidth:2:5089489..13569215` = str_extract(data$`growthZoneWidth:2:5089489..13569215`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`Vmax:3:7523588..10772017` = str_extract(data$`Vmax:3:7523588..10772017`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`growthZoneWidth:3:0..4074606` = str_extract(data$`growthZoneWidth:3:0..4074606`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`growthZoneWidth:4:9820194..15986034` = str_extract(data$`growthZoneWidth:4:9820194..15986034`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`Vmax:5:14159931..17792227` = str_extract(data$`Vmax:5:14159931..17792227`, "[A-Z]+[0-9][A-Z][0-9]+")
+data$`vf:5:12547133..17450895` = str_extract(data$`vf:5:12547133..17450895`, "[A-Z]+[0-9][A-Z][0-9]+")
+
+write.csv(data, "~/Desktop/geneListCropped.csv")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

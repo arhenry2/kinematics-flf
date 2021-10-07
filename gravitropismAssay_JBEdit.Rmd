@@ -1,0 +1,70 @@
+---
+title: "gravitropismAssay.Rmd"
+output: html_document
+author: "Ashley Henry"
+date: 2021-07-27
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+#library(rowr)
+require(reshape2)
+library(dplyr)
+library('pracma')
+source('Pcajb.R')
+
+```
+
+```{r something}
+dnm = "~/Dropbox/EdgarSpalding/labdata/development/Misc/210804/"
+setwd(dnm)
+
+# Load tip angles
+A <- read_csv(paste(dnm , "210804_gravitropism_tipangles_subNA.csv", sep = ""))
+A <- A  %>%
+  select(-Index_RIL, -Index_cam, -Index_middle, -RIL_partName, -RIL_fullName, -RIL)
+X <- as.matrix(A)
+
+# Set PCA parameters
+n  = 50
+t  = 0.99
+px <- Pcajb(Data=X, npc=n)
+MU <- px$meanSubtract()
+mu <- Reshape(unlist(MU[1]), size(X,1), size(X,2)) # Mean-Subtracted Matrix
+u  <- unlist(MU[2])                                # Mean Values
+c  <- px$covarMatrix()                             # Covariance Matrix
+WV <- px$eigens()
+w  <- Reshape(unlist(WV[1]), size(X,2), n)         # Eigen Vector
+v  <- unlist(WV[2])                                # Eigen Values
+S  <- px$PCAScores()                               # PC Scores
+Y  <- px$SimData()                                 # Simulated Matrix
+V  <- px$VarExplained(t,n)                         
+v  <- unlist(V[1])                                 # Variance Explained
+```
+
+```{r plot-pca}
+idx = 2
+plot.new()
+par(mfrow=c(2,2))
+plot(X[idx,], col = "green") 
+lines(Y[idx,], col = "red")
+hist(S[,1])
+plot(v, col = "red")
+plot(S[,1], S[,2], col = "blue")
+
+```
+
+```{r tipanglescore-vs-growthrate}
+
+
+```
+
+
+
+
+
+
