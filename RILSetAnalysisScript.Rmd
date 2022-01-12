@@ -53,7 +53,6 @@ __Note:__
 ### Creates path with folder of folders, each with one rawData.csv file
 ### Loads in all of the rawData.csv files ###
 # masterPath <- "~/Desktop/RILPop_tmp/"
-# masterPath <- "~/Desktop/pux1Imaging/Day3_pux1Clicked"
 masterPath <- "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_RawData"
 
 
@@ -786,6 +785,27 @@ parameterBoxplots = grid.arrange(boxplot_n, boxplot_k, boxplot_vf, boxplot_x0,
 ## Outlier Testing from Stuti (use this!)
 check_outliers(dataframe, specifics)
 
+# Plot bar graphs of parameters
+data = AllRILs_SummaryParameters %>%
+  select(-X1, -fileName, -meanAbsDiff, -matSlope)
+# Melt data to be long format for easy ggplot graphing
+data_long = melt(data, ID.vars = "mutants")
+# Separate out dataset by parameters
+data_x0 = data_long %>%
+  filter(variable == "x0")
+data_vf = data_long %>%
+  filter(variable == "vf")
+data_k = data_long %>%
+  filter(variable == "k")
+data_n = data_long %>%
+  filter(variable == "n")
+
+# Now plot
+ggplot(data_x0, aes(x = mutants)) +
+  geom_bar(aes(y = value))
+  
+ggplot(data_long, aes(mutants, value)) +   
+  geom_bar(aes(fill = variable), position = "dodge", stat="identity")
 ```
 
 ```{r log(Parameter)-stats-by-RIL}
@@ -802,7 +822,8 @@ tally() # No. of samples for each RIL
 # Load in csv with data
 # AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedNoMatZoneRoots.csv")
 # AllRILs_SummaryParameters = read.csv("~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_pux1Day3_SummaryParameters.csv")
-AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021-09-27_IAAMutants_SummaryParameters.csv")
+# AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021-09-27_IAAMutants_SummaryParameters.csv")
+AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-11-22_res_auxinMutants_SummaryParameters-wCol.csv")
 
 
 # Take log of all parameters to produce more normal data
@@ -827,8 +848,8 @@ AllRILs_AveragedParameters = AllRILs_SummaryParameters %>%
   group_by(mutants) %>%
   # group_by(RILs) %>%
   # group_by(genotype) %>% 
-  # select(-X, -X.1, -fileName,) %>%
-  select(-X1, -fileName, -matSlope, -meanAbsDiff) %>%
+  select(-fileName,) %>%
+  # select(-X1, -fileName, -matSlope, -meanAbsDiff) %>%
   # select(-X, -fileName, -matSlope, -meanAbsDiff) %>% # Use if want to remove fitting metrics from dataset
   summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
 
@@ -864,23 +885,18 @@ AllRILs_VarianceParameters = AllRILs_SummaryParameters %>%
 
 # Save all files from above
 # write.csv(AllRILs_AveragedParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_AveragedParameters-removedLittleMatZoneRoots.csv")
-write.csv(AllRILs_AveragedParameters, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_09_27_AllMutants_AveragedParameters-outliersRemoved.csv")
+write.csv(AllRILs_AveragedParameters, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_11_23_AllMutants_AveragedParameters.csv")
 write.csv(AllRILs_MedianParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_MedianParameters-removedLittleMatZoneRoots.csv")
 write.csv(AllRILs_StDevParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_StDevParameters-removedLittleMatZoneRoots.csv")
 write.csv(AllRILs_VarianceParameters, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_VarianceParameters-removedLittleMatZoneRoots.csv")
 # write.csv(AllRILs_nParameters, "~/rildata/rildata_fullDataset/2020_10_08_AllRILs_nParameters.csv")
 
 
-write.csv(AllRILs_AveragedParameters, "~/Desktop/pux1Imaging/pux1_Analysis/PRE-OUTLIERTEST_2020_12_08_pux1Day3_AveragedParameters.csv")
-write.csv(AllRILs_MedianParameters, "~/Desktop/pux1Imaging/pux1_Analysis/PRE-OUTLIERTEST_2020_12_08_pux1Day3_MedianParameters.csv")
-write.csv(AllRILs_StDevParameters, "~/Desktop/pux1Imaging/pux1_Analysis/PRE-OUTLIERTEST_2020_12_08_pux1Day3_StDevParameters.csv")
-write.csv(AllRILs_VarianceParameters, "~/Desktop/pux1Imaging/pux1_Analysis/PRE-OUTLIERTEST_2020_12_08_pux1Day3_VarianceParameters.csv")
-
 ```
 
 ```{r ttests-for-mutant-parameters}
 # t-tests for x0 parameter
-qqplot(abcb19$x0, runif(1000)) # ran for Col, pin2, abcb4, & abcb19 (all mostly follow a N dist)
+qqplot(abcb19_3$x0, runif(1000)) # ran for Col, pin2, abcb4, & abcb19 (all mostly follow a N dist)
 x0_Col_pin2 = t.test(Col$x0, pin2$x0, var.equal = FALSE) # p-value = 0.0003622
 x0_Col_abcb4 = t.test(Col$x0, abcb4$x0, var.equal = FALSE) # p-value = 0.1143
 x0_Col_abcb19 = t.test(Col$x0, abcb19$x0, var.equal = FALSE) # p-value = 0.002635
@@ -919,6 +935,8 @@ t.test(abcb4$vf, abcb19$vf, var.equal = FALSE) # p-value = 0.4018
 t.test(abcb4$k, abcb19$k, var.equal = FALSE) # p-value = 0.3253
 t.test(abcb4$n, abcb19$n, var.equal = FALSE) # p-value = 0.0175
 
+
+ggplot()
 ```
 
 ```{r brief-outlier-testing}
@@ -1052,7 +1070,7 @@ for (i in 1:length(res)) {
   resultVel[,1] = as.numeric(resultVel[,1]) # without unit conversion
   #   resultVel[,j] <- as.numeric(resultVel[,j]) * 0.08 } # conversion from px/frame to mm/hr for all velocity value columns
   # resultVel[,1] = as.numeric(resultVel[,1]) / 1500 # conversion from px to mm for the one position value column
-  write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/PosEvaluatedVel', as.numeric(i), '.csv', sep = ""), row.names = F)
+  write.csv(resultVel, paste('/Users/ashleyhenry/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/PosEvaluatedVel', as.numeric(i), '.csv', sep = ""), row.names = F)
   plot(resultVel[,1], resultVel[,2])
   
   ######################################
@@ -1066,7 +1084,7 @@ for (i in 1:length(res)) {
   
   # resultREGR[,1] = as.numeric(resultREGR[,1]) / 1500 # WORKS: conversion from px to mm for the one position value column
   resultREGR[,1] = as.numeric(resultREGR[,1]) # without unit conversion
-  write.csv(resultREGR, paste('/Users/ashleyhenry/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/PosEvaluatedREGR', as.numeric(i), '.csv', sep = ""), row.names = F)
+  write.csv(resultREGR, paste('/Users/ashleyhenry/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles//PosEvaluatedREGR', as.numeric(i), '.csv', sep = ""), row.names = F)
   plot(resultREGR[,1], resultREGR[,2])
 }
 ```
@@ -1247,21 +1265,22 @@ flfPlot = flf(pos, avgParameters_Mutants$x0[1], avgParameters_Mutants$vf[1], avg
 
 # Matrix that has position values in 1st column and fitted velocity values in 2nd column
 # "abcb19" "b4"     "Col"    "pin2" 
-avgVelCurve <- matrix(nrow = length(pos), ncol = 5)
+avgVelCurve <- matrix(nrow = length(pos), ncol = 6)
 avgVelCurve[,1] <- pos
-avgVelCurve[,2] <- flf(pos, avgParameters_Mutants$x0[1], avgParameters_Mutants$vf[1], avgParameters_Mutants$k[1], avgParameters_Mutants$n[1]) 
-avgVelCurve[,3] <- flf(pos, avgParameters_Mutants$x0[2], avgParameters_Mutants$vf[2], avgParameters_Mutants$k[2], avgParameters_Mutants$n[2])
-avgVelCurve[,4] <- flf(pos, avgParameters_Mutants$x0[3], avgParameters_Mutants$vf[3], avgParameters_Mutants$k[3], avgParameters_Mutants$n[3])
-avgVelCurve[,5] <- flf(pos, avgParameters_Mutants$x0[4], avgParameters_Mutants$vf[4], avgParameters_Mutants$k[4], avgParameters_Mutants$n[4])
+avgVelCurve[,2] <- flf(pos, AllRILs_AveragedParameters$x0[1], AllRILs_AveragedParameters$vf[1], AllRILs_AveragedParameters$k[1], AllRILs_AveragedParameters$n[1]) 
+avgVelCurve[,3] <- flf(pos, AllRILs_AveragedParameters$x0[2], AllRILs_AveragedParameters$vf[2], AllRILs_AveragedParameters$k[2], AllRILs_AveragedParameters$n[2])
+avgVelCurve[,4] <- flf(pos, AllRILs_AveragedParameters$x0[3], AllRILs_AveragedParameters$vf[3], AllRILs_AveragedParameters$k[3], AllRILs_AveragedParameters$n[3])
+avgVelCurve[,5] <- flf(pos, AllRILs_AveragedParameters$x0[4], AllRILs_AveragedParameters$vf[4], AllRILs_AveragedParameters$k[4], AllRILs_AveragedParameters$n[4])
+avgVelCurve[,6] <- flf(pos, AllRILs_AveragedParameters$x0[5], AllRILs_AveragedParameters$vf[5], AllRILs_AveragedParameters$k[5], AllRILs_AveragedParameters$n[5])
 
 # Make a dataframe
 avgVelCurve = data.frame(avgVelCurve)
 # Change column names to pos & genotype
-colnames(avgVelCurve) <- c("pos", "abcb19", "abcb4", "Col", "pin2")
+colnames(avgVelCurve) <- c("pos", "abcb19-3", "abcb4-1", "abcb4-2", "abcb4-3", "Col")
 # Turn to long format
 avgVelCurve_IAAMutants_longForm = melt(avgVelCurve, id.var = "pos")
 # Save work
-write.csv(avgVelCurve, paste('/Users/ashleyhenry/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021-09-27_avgVelCurve_IAAMutants-withCol.csv'), row.names = F)
+write.csv(avgVelCurve, paste('/Users/ashleyhenry/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-11-23_avgVelCurve_IAAMutants-wAlleles-wCol.csv'), row.names = F)
 
 # Plot this
 ggplot(avgVelCurve_IAAMutants_longForm, aes(x = pos, y = value, color = variable)) +
@@ -1290,19 +1309,103 @@ grad_out <- grad(fwdDiff, angleCurve[,2])
 
 ```
 
-j'u'lian bustsamane was here.
+```{r plotting-vel-curves-IAA-mutants}
+AllRILs_SummaryParameters = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_09_27_AllMutants_AveragedParameters-outliersRemoved.csv")
+# In the averaged csv:
+## 1 = abcb19
+## 2 = abcb4
+## 3 = Col
+## 4 = pin2
 
+pos <- seq(0, 2000, 1)
+velCurve_abcb19 = flf(pos,
+                      AllRILs_SummaryParameters[1,]$x0,
+                      AllRILs_SummaryParameters[1,]$vf,
+                      AllRILs_SummaryParameters[1,]$k,
+                      AllRILs_SummaryParameters[1,]$n)
+velCurve_abcb4 = flf(pos,
+                     AllRILs_SummaryParameters[2,]$x0,
+                     AllRILs_SummaryParameters[2,]$vf,
+                     AllRILs_SummaryParameters[2,]$k,
+                     AllRILs_SummaryParameters[2,]$n)
+velCurve_Col = flf(pos,
+                   AllRILs_SummaryParameters[3,]$x0,
+                   AllRILs_SummaryParameters[3,]$vf,
+                   AllRILs_SummaryParameters[3,]$k,
+                   AllRILs_SummaryParameters[3,]$n)
+velCurve_pin2 = flf(pos,
+                    AllRILs_SummaryParameters[4,]$x0,
+                    AllRILs_SummaryParameters[4,]$vf,
+                    AllRILs_SummaryParameters[4,]$k,
+                    AllRILs_SummaryParameters[4,]$n)
+velCurves = cbind(pos, velCurve_abcb19, velCurve_abcb4, velCurve_Col, velCurve_pin2)
+velCurves = data.frame(velCurves)
 
-```{r plotting}
-data = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/PosEvaluatedVel1.csv")
-data_long = melt(data, id.var = "V1")
-ggplot(data_long, aes(x = V1, y = value, color = variable)) +
-  geom_point()
+velCurves_long = melt(velCurves, id.vars = "pos")
 
+ggplot(velCurves_long, aes(x = pos, y = value, color = variable)) +
+  geom_point() +
+  ylim(0, 1.5) +
+  xlim(0, 2000) +
+  xlab("Position from Quiescent Center (px)") +
+  ylab("Velocity from QC (px/frame)") +
+  ggtitle("Velocity Curves for Auxin Transport Mutants") +
+  theme_bw()
 ```
 
+```{r plotting-REGR-curves-IAA-mutants}
+AllRILs_SummaryParameters = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-11-22_res_auxinMutants_SummaryParameters-wCol.csv")
+# In the averaged csv:
+## 1 = abcb19
+## 2 = abcb4
+## 3 = Col
+## 4 = pin2
 
+pos <- seq(0, 2000, 1)
+REGRCurve_abcb19_3 = REGR(pos,
+                      AllRILs_SummaryParameters[1,]$x0,
+                      AllRILs_SummaryParameters[1,]$vf,
+                      AllRILs_SummaryParameters[1,]$k,
+                      AllRILs_SummaryParameters[1,]$n,
+                      1)
+REGRCurve_abcb4_1 = REGR(pos,
+                     AllRILs_SummaryParameters[2,]$x0,
+                     AllRILs_SummaryParameters[2,]$vf,
+                     AllRILs_SummaryParameters[2,]$k,
+                     AllRILs_SummaryParameters[2,]$n,
+                      1)
+REGRCurve_abcb4_2 = REGR(pos,
+                   AllRILs_SummaryParameters[3,]$x0,
+                   AllRILs_SummaryParameters[3,]$vf,
+                   AllRILs_SummaryParameters[3,]$k,
+                   AllRILs_SummaryParameters[3,]$n,
+                      1)
+REGRCurve_abcb4_3 = REGR(pos,
+                    AllRILs_SummaryParameters[4,]$x0,
+                    AllRILs_SummaryParameters[4,]$vf,
+                    AllRILs_SummaryParameters[4,]$k,
+                    AllRILs_SummaryParameters[4,]$n,
+                      1)
+REGRCurve_Col = REGR(pos,
+                    AllRILs_SummaryParameters[5,]$x0,
+                    AllRILs_SummaryParameters[5,]$vf,
+                    AllRILs_SummaryParameters[5,]$k,
+                    AllRILs_SummaryParameters[5,]$n,
+                      1)
 
+REGRCurves = cbind(pos, REGRCurve_abcb19_3, REGRCurve_abcb4_1, REGRCurve_abcb4_2, REGRCurve_abcb4_3, REGRCurve_Col)
+REGRCurves = data.frame(REGRCurves)
 
+REGRCurves_long = melt(REGRCurves, id.vars = "pos")
+
+ggplot(REGRCurves_long, aes(x = pos, y = value, color = variable)) +
+  geom_point() +
+  ylim(0, 0.004) +
+  xlim(0, 2000) +
+  xlab("Position from Quiescent Center (px)") +
+  ylab("Relative Elemental Growth Rate from QC (%/hr)") +
+  ggtitle("REGR Curves for Auxin Transport Mutants") +
+  theme_bw()
+```
 
 

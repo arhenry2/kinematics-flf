@@ -1,0 +1,679 @@
+---
+title: "AuxinTransportMutants_Analysis.Rmd"
+author: "Ashley Henry"
+date: "11/19/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+devtools::load_all('/Users/ashleyhenry/flf')
+library(flf)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(naniar)
+library(neldermead)
+library(gridExtra)
+library(performance)
+library(numDeriv)
+library(bigutilsr)
+```
+
+## Analysis of Auxin Transport Mutants
+### Mutants with Col background: pin2, abcb4-1, abcb4-2, & abcb19-3
+
+
+```{r load-data, echo=FALSE}
+### Below is copied from AnalyzeKinematicAnalysisToolOutput.Rmd
+### Creates path with folder of folders, each with one rawData.csv file
+### Loads in all of the rawData.csv files ###
+masterPath <- "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_RawData_KnownAlleles"
+
+# 11-23-2020
+# loopValue = number of times I'm taking 90% of the data with the lowest residuals
+# loopValue at 10 for whole RIL set
+res <- processMasterFolder(masterPath, 15)
+
+# Saves res structure (technically a "large list") to the working directory
+## Saves data in a binary file
+save(res, file = "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-12-06_res_auxinMutants.RData")
+
+# Or if you already did this step:
+load("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021-12-06_res_auxinMutants.RData")
+```
+
+```{r plot-point-cloud-&-fitting, echo = FALSE}
+# for loop to plot point cloud & fitted line on same graph
+## Saves plot to Desktop/RILPop_plotsNEW/ for each replicate
+## 12-07-2020
+for (i in 1:length(res)){
+  for(j in 1:length(res[[i]]$rawData)){
+    rawData <- as.data.frame(res[[i]]$rawData[[j]])
+    graphTitle = rawData$fileName[j]
+    # Shorten fileName to the replicate name for simplicity
+    # graphTitle = str_split(graphTitle, '/', simplify = TRUE)[,8] #use for RILs
+    graphTitle = str_split(graphTitle, '/', simplify = TRUE)[,9] #use for IAA transport mutants
+    print(graphTitle)
+    fittedVel = flf(rawData$pos,
+                    res[[i]]$summary_table$x0[j],
+                    res[[i]]$summary_table$vf[j],
+                    res[[i]]$summary_table$k[j],
+                    res[[i]]$summary_table$n[j])
+    
+    print(ggplot(rawData, aes(x = rawData$pos)) +
+      geom_point(aes(y = rawData$vel)) +
+      geom_point(aes(y = fittedVel), color = "blue") +
+      ggtitle(graphTitle) +
+      xlab("Position from Root Tip (px)") +
+      ylab("Velocity from Root Tip (px/frame)") +
+      theme_bw())
+    # Saving each graph as .tiff takes up more space than .pdf, so using .pdf for full RILSet
+    # graphName = paste('~/Desktop/RILPop_plotsNEW/', graphTitle, "_", i, '_pointCloudFittedVel.pdf', sep = "")
+    # graphName = paste('~/Desktop/pux1Imaging/pux1_plots/', graphTitle, '_pointCloudFittedVel.pdf', sep = "")
+    graphName = paste('~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/IAAMutant_Alleles_pointCloudFittedVel/', graphTitle, "_", i, '_pointCloudFittedVel.pdf', sep = "")
+    # Saves plot to location written above ^
+    ggsave(graphName)
+  }
+}
+
+```
+
+```{r Load-Res-Structures}
+
+######################################################################
+##### Note: This will combine all .RData files in the directory! #####
+######################################################################
+
+# Iteratively loads in all res structures from ~/rildata directory by:
+## Loading RData file into new environment
+## Then extracting res variable
+loadRData <- function(fileName) {
+  #loads an RData file, and returns it
+  e1 = new.env()
+  load(fileName, e1)
+  get("res", e1)
+}
+# 
+# Load in correct res structure
+load("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-12-06_res_auxinMutants.RData")
+load("~/Desktop/2021-12-15_res_CviLer.RData")
+
+
+# Pulls filenames from directory
+fils <- matrix(list.files("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/", pattern = "RData$", full.names = TRUE, recursive = TRUE))
+
+# # Loading them into RES structure
+RES <- lapply(fils, loadRData)
+```
+
+```{r Combine-Summary-Tables-of-Res-Structure}
+############## function & for loop written on 30 January 2020 w/ Julian's help #############
+####################### Copied from ParameterInvestigation.Rmd script ######################
+# Function to separate res structure and rename pathname to filename for column "fileName" #
+pathname_to_filename = function(genotype) {
+  # Get genotype name from pathname
+  genoName = basename(dirname(dirname(toString(genotype$fileName[[1]]))))
+  # Create empty matrix of one column and as many rows as there are of res structure
+  outnames = matrix(1, nrow(genotype))
+  # outnames = matrix(1, as.numeric(nrow(genotype)))
+  # Loops through each row of res
+  ## Extracts pathname from each row in the dataframe
+  ## Extracts filename from each pathname
+  ## outnames = extracted filenames
+  for (i in 1:nrow(genotype)) {
+    namePlay_i  = toString(genotype$fileName[[i]])
+    outnames[i] = basename(dirname(namePlay_i))
+    print(outnames[i])
+  }
+  # Replaces pathname column with outnames column
+  ## Now the column labeled "fileName" has filename instead of pathname
+  genotype[["fileName"]] <- outnames
+  # Return genotype summary table and genotype name
+  gtype_gname = list(genotype, genoName)
+  return(gtype_gname)
+}
+
+extractParameters = function(res) {
+  # Create empty dataframe to fill with each RIL's parameters
+  RILParameterSummaryTable = data.frame(matrix(
+                                            ncol = 7, 
+                                            nrow = 0, 
+                                            dimnames = list(NULL, c("fileName", "x0", "vf", "k", "n", "meanAbsDiff", "matSlope"))))
+
+  # for loop to call "pathname_to_filename" function for each genotype in res
+  ## Fills dataframe with all replicates of all RILs' parameter summary tables
+  for (i in 1:length(res)) {
+    gtype = res[[i]]$summary_table
+    gList = pathname_to_filename(gtype)
+    summaryTable = gList[[1]]
+    # eval(parse(text = paste0(sprintf("%s = gList[[1]]", gList[[2]])))) # removed this line 2021-11-23 b/c had issues & works w/out it
+    RILParameterSummaryTable = rbind(RILParameterSummaryTable, summaryTable)
+  }
+
+  return(RILParameterSummaryTable)
+}
+
+# Uses function above to make summary table for parameters of all RILs
+RILParams = lapply(RES, extractParameters)
+RILParam_concatenated = bind_rows(RILParams)
+# RILParam_concatenated = bind_rows(fileName) 
+
+# Save progress
+write.csv(RILParam_concatenated, file = "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-12-06_res_auxinMutants_SummaryParameters.csv")
+```
+
+```{r shorten-fileName-to-be-RILnumbers}
+# This code chunk creates a new column called "RILs" and fills that column with the shortened fileName
+## This allows the RILs to be grouped together and averaged, because now they have the same name to be grouped
+## Note: Revised on 2020-05-27 to add leading zeros before RIL number
+
+# Start with file you just created (^), need to load() then get() to have in environment
+# IAAMutants_SummaryParameters = load("~/Desktop/pux1Imaging/pux1_Analysis/2020_12_08_pux1Day3_SummaryParameters.csv")
+# IAAMutants_SummaryParameters = get(IAAMutants_SummaryParameters)
+
+IAAMutants_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-12-06_res_auxinMutants_SummaryParameters.csv")
+
+# Makes a column of shortened RIL names by copying the fileName column
+## Make copy of fileName column called RILs
+# IAAMutants_SummaryParameters$RILs <- IAAMutants_SummaryParameters$fileName
+
+# Used this for IAA mutants data analysis
+## Note: I changed the Col names to be col manually in Excel to make this part easier
+IAAMutants_SummaryParameters$mutants <- IAAMutants_SummaryParameters$fileName
+IAAMutants_SummaryParameters$mutants <- str_split(IAAMutants_SummaryParameters$mutants, '_', simplify = TRUE)[,1]
+
+# Save progress in csv file
+write.csv(IAAMutants_SummaryParameters, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-12-06_res_auxinMutants_SummaryParameters.csv")
+```
+
+# Begin outlier check
+## Percent Maturation Zone
+## Parameter Distributions
+## 
+
+```{r percent-mat-zone, echo = FALSE}
+### Thought process:
+# which() gives the index of the velocity/REGR points that are in k
+# this index won't work on pos values in the rawData, b/c there are 8000+ indices & the disk locations repeat along the root
+# need to grab the velocity values at that point, graph them to see where they are & pull THOSE vel values from the rawData
+## As of 11:51 on 12-21-2020 I did the above task, now to add it to a for loop!
+
+## Calculating percent of Maturation Zone for each root
+# Finished code on 1-4-2021
+
+percentofMatZone <- data.frame(filename = c(), percentofMatZone = c())
+
+for (i in 1:length(res)){
+  for(j in 1:length(res[[i]]$rawData)){
+    rawData <- as.data.frame(res[[i]]$rawData[[j]]) 
+    fileName = rawData$fileName[j]
+    fileName = str_split(fileName, '/', simplify = TRUE)[,9]
+    print(fileName)
+
+    pos = c(1:3000)
+    # Get velocity fits for example data
+    fittedVel = flf(pos, 
+                 res[[i]]$summary_table[2]$x0[j],	
+                 res[[i]]$summary_table[3]$vf[j],	
+                 res[[i]]$summary_table[4]$k[j],	
+                 res[[i]]$summary_table[5]$n[j])
+
+    # Get REGR fits for example data
+    fittedREGR <- REGR(pos, 
+                   res[[i]]$summary_table[2]$x0[j],	
+                   res[[i]]$summary_table[3]$vf[j],	
+                   res[[i]]$summary_table[4]$k[j],	
+                   res[[i]]$summary_table[5]$n[j],
+                   1)
+
+    # REGRfit = data.frame(cbind(pos, fittedREGR))
+    maxREGR = max(fittedREGR) # finds Vmax
+    per = 0.2 # percentage of area under the curve we want
+    maxVel = max(fittedVel) # finds vf
+
+    velocityFit = data.frame(cbind(pos, fittedVel))
+    # plot(velocityFit)
+
+    # ggplot(REGRfit, aes(x = pos)) +
+    #   geom_point(aes(y = fittedREGR))
+
+    k = which((fittedREGR < maxREGR*per) & (fittedVel > maxVel*0.5)) # reports row number/column number of the cases that are "true"
+
+    fittedVelofMatZone = fittedVel[k]
+    # plot(pos[k], fittedVelofMatZone, ylim = c(0, max(fittedVelofMatZone)), xlim = c(0, 3000)) # just plots mat zone
+
+    minVelofMatZone = min(fittedVelofMatZone) # find min value of vel that's in mat zone
+
+    rawDatainMatZone = which(rawData$vel > minVelofMatZone)
+    percentMatZone = (length(rawDatainMatZone)/length(res[[i]]$rawData[[j]]$vel))*100
+    
+    tmp <- data.frame(filename = fileName, percentofMatZone = percentMatZone)
+    percentofMatZone <- rbind(percentofMatZone,tmp)
+   
+  }
+  percentofMatZone
+}
+
+auxinMutants_PercentofMatZone = percentofMatZone
+# write.csv(WholeRILSet_PercentofMatZone, "~/Desktop/01-04-2021_WholeRILSet_PercentofMatZone.csv")
+write.csv(auxinMutants_PercentofMatZone, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles//11--2021_IAAMutants_PercentofMatZone.csv")
+
+
+auxinMutants_PercentofMatZone = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/11-19-2021_IAAMutants_PercentofMatZone.csv", header = TRUE) %>%
+  select(-X)
+
+ggplot(auxinMutants_PercentofMatZone, aes(percentofMatZone)) +
+  geom_density() +
+  ggtitle("Percentages of Position Values in Maturation Zone for IAA Transport Mutants") +
+  theme_bw()
+
+rootsWithZeroMatZone = auxinMutants_PercentofMatZone %>%
+  filter(percentofMatZone < 0.0090)
+
+rootswithLittleMatZone = auxinMutants_PercentofMatZone %>%
+  filter(percentofMatZone < .9)
+
+# Note: there are 56 of 1631 roots that have 0 position points within the defined maturation zone
+# Also Note: Visually, would like the cut-off to be 0.9% of the maturation zone included. Anything >0.9%, I'm comfy keeping. 
+## I'll look into those <0.9%
+
+### Create dataset that removes the roots < 0.5% of the mat zones
+IAAMutants_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-11-22_res_auxinMutants_SummaryParameters.csv") %>%
+  select(-X, -X.1) %>%
+  group_by(fileName)
+# data = cbind(AllRILs_SummaryParameters, WholeRILSet_PercentofMatZone)
+data = cbind(IAAMutants_SummaryParameters, auxinMutants_PercentofMatZone)
+identical(data[,2], data[,10]) # Check if filename columns are identical -> Yes, they are
+data = data.frame(data)
+# Removes roots wth no maturation zone from dataset, leaving 1575 total roots
+data = data %>%
+  filter(percentofMatZone > 0.9)
+# Write data to csv for later:
+write.csv(data, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_IAAMutants_SummaryParameters-removedLittleMatZoneRoots.csv")
+
+
+# ################################################################################
+# ### Create dataset that removes 100 roots with few points in the mat zone
+# AllRILs_SummaryParameters = read.csv("~/rildata/rildata_realfullDataset/2020_12_07_AllRILs_SummaryParameters.csv") %>%
+#   select(-X) %>%
+#   group_by(fileName)
+# data = cbind(AllRILs_SummaryParameters, WholeRILSet_PercentofMatZone)
+# identical(data[['fileName']],data[['fileName1']]) # Yes, these are identical columns
+# data = data.frame(data)
+# # Removes roots wth little (<0.5%) maturation zone from dataset, leaving 1497 total roots
+# data = data %>%
+#   # filter(percentofMatZone > 0.5)
+#   filter(percentofMatZone > 0.0090)
+# # Write data to csv for later:
+# write.csv(data, "~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedLittleMatZoneRoots.csv")
+# ################################################################################
+```
+
+```{r parameter-distributions-all-roots}
+# Taking a look at the distribution of parameters with new dataset that doesn't contain outliers (roots without a mat zone)
+# data = read.csv("~/rildata/rildata_realfullDataset/2021_01_07_AllRILs_SummaryParameters-removedNoMatZoneRoots.csv")
+data = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_IAAMutants_SummaryParameters-removedLittleMatZoneRoots.csv")
+data = data %>%
+  select(-X, -X.1, -X.2)
+
+# Note: k and n still very skewed left, will need to do log transformation & try again! (code for that is below)
+p1 = ggplot(data, aes(n)) +
+  geom_density()
+p2 = ggplot(data, aes(k)) +
+  geom_density()
+p3 = ggplot(data, aes(vf)) +
+  geom_density()
+p4 = ggplot(data, aes(x0)) +
+  geom_density()
+
+# Plot all density plots on one page
+parameterDensityPlots_pin2 = grid.arrange(p1, p2, p3, p4, 
+             ncol = 2, nrow = 2)
+```
+
+```{r parameter-distributions-by-mutant-genotype}
+# Outlier testing with density plots
+IAAMutants_SummaryParameters = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-11-22_res_auxinMutants_SummaryParameters-wCol.csv")
+
+# Make separate datasets for each mutant:
+## abcb19
+abcb19_3 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "abcb19-3")
+## abcb4-1
+abcb4_1 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "abcb4-1")
+## abcb4-2
+abcb4_2 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "abcb4-2")
+## abcb4-3
+abcb4_3 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "abcb4-3")
+## pin2
+pin2 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "pin2")
+## Col-0 (WT)
+Col_0 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "Col-0")
+
+
+
+# Plot distribution plots of each parameter
+dist_n = ggplot(Col_0, aes(n)) +
+  geom_density() +
+  xlab("Parameter n for Col-0") +
+  theme_bw()
+
+dist_k = ggplot(Col_0, aes(k)) +
+  geom_density() +
+  xlab("Parameter k for Col-0") +
+  theme_bw()
+
+dist_vf = ggplot(Col_0, aes(vf)) +
+  geom_density() +
+  xlab("Parameter vf for Col-0") +
+  theme_bw()
+
+dist_x0 = ggplot(Col_0, aes(x0)) +
+  geom_density() +
+  xlab("Parameter x0 for Col-0") +
+  theme_bw()
+
+# Plot all density plots on one page
+parameterDensityPlots_pin2 = grid.arrange(dist_n, dist_k, dist_vf, dist_x0, 
+             ncol = 2, nrow = 2)
+
+```
+
+## Possible outliers as seen from density plots
+* 
+
+## Also, consider doing a log transformations on n and k (to keep with RIL processing)
+
+```{r parameter-boxplots}
+# Outlier Testing with Boxplots:
+## Note: Manually change which genotype you're plotting!
+
+# Do this again to check boxplots after outlier removal
+IAAMutants_SummaryParameters = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_IAAMutants_SummaryParameters-removedLittleMatZoneRoots.csv") %>%
+  select(-X, -X.1, -X1, -filename)
+
+abcb19_3 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "abcb19-3")
+## abcb4-1
+abcb4_1 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "abcb4-1")
+## abcb4-2
+abcb4_2 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "abcb4-2")
+## pin2
+pin2 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "pin2")
+## Col-0 (WT)
+Col_0 = IAAMutants_SummaryParameters %>%
+  filter(IAAMutants_SummaryParameters$mutants == "Col-0")
+
+mutant = Col_0
+boxplot_x0 = ggplot(mutant) +
+  aes(x = "", y = x0) +
+  geom_boxplot(fill = "blue") +
+  xlab("Col_0") + 
+  theme_bw()
+
+boxplot_vf = ggplot(mutant) +
+  aes(x = "", y = vf) +
+  geom_boxplot(fill = "red") +
+  xlab("Col_0") + 
+  theme_bw()
+
+boxplot_k = ggplot(mutant) +
+  aes(x = "", y = k) +
+  geom_boxplot(fill = "green") +
+  xlab("Col_0") + 
+  theme_bw()
+
+boxplot_n = ggplot(mutant) +
+  aes(x = "", y = n) +
+  geom_boxplot(fill = "orange") +
+  xlab("Col_0") + 
+  theme_bw()
+
+# Plot all four boxplots on one page, as done in last code chunk
+parameterBoxplots = grid.arrange(boxplot_n, boxplot_k, boxplot_vf, boxplot_x0, 
+             ncol = 2, nrow = 2)
+
+# Now manually remove outliers that were dots on the boxplots!
+```
+
+```{r outlierTests-with-check_outliers()}
+## Outlier Testing that Stuti suggested
+mutant = Col_0
+nrow(Col_0)
+mutant = data.frame(mutant)
+outliersList = check_outliers((mutant$n), method = c("zscore")) # Possible methods: "pareto", "cook", "zscore_robust", "iqr", "ci"
+outliersList = check_outliers((mutant$x0), method = "zscore", threshold = 2)
+
+# From check_outliers() R manual
+outliers_list <- check_outliers(mutant$n) # Find outliers
+as.data.frame(outliers_list) # Show the row index of the outliers
+as.numeric(outliers_list) # The object is a binary vector...
+filtered_mutant <- mutant[!outliers_list, ] # And can be used to filter outliers from a dataframe
+nrow(filtered_mutant) # New size, 8 (1 outliers removed)
+```
+
+```{r barGraphs-of-parameters-by-genotype}
+# Plot bar graphs of parameters
+data = IAAMutants_SummaryParameters %>%
+  select(-X1, -fileName, -meanAbsDiff, -matSlope)
+# Melt data to be long format for easy ggplot graphing
+data_long = melt(data, ID.vars = "mutants")
+# Separate out dataset by parameters
+data_x0 = data_long %>%
+  filter(variable == "x0")
+data_vf = data_long %>%
+  filter(variable == "vf")
+data_k = data_long %>%
+  filter(variable == "k")
+data_n = data_long %>%
+  filter(variable == "n")
+
+# Now plot
+ggplot(data_x0, aes(x = mutants)) +
+  geom_bar(aes(y = value))
+  
+ggplot(data_long, aes(mutants, value)) +   
+  geom_bar(aes(fill = variable), position = "dodge", stat = "identity")
+```
+
+
+
+# Average Parameters
+```{r avg-parameters-by-mutant}
+AllMutants_SummaryParameters = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_IAAMutants_SummaryParameters-removedLittleMatZoneRoots.csv") %>%
+  select(-X, -X.1, -filename, -fileName) %>%
+  mutate(x0 = as.numeric(x0),
+         vf = as.numeric(vf),
+         k = as.numeric(k),
+         n = as.numeric(n))
+
+AllMutants_AveragedParameters = AllMutants_SummaryParameters %>%
+  group_by(mutants) %>%
+  select(-matSlope, -meanAbsDiff, -percentofMatZone) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
+
+AllMutants_StDevParameters = AllMutants_SummaryParameters %>%
+  group_by(mutants) %>%
+  select(-matSlope, -meanAbsDiff, -percentofMatZone) %>%
+  summarise_each(funs(sd(., na.rm = TRUE))) 
+
+# Save data as csv files
+write.csv(AllMutants_AveragedParameters, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_09_AllMutants_AveragedParameters.csv")
+write.csv(AllMutants_StDevParameters, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_09_AllMutants_StDevParameters.csv")
+```
+
+# Plot Velocity and REGR Profiles
+
+```{r fittingVelCurves}
+### Creates numeric vector for means of the parameters ###
+### Makes range of y from 0.0 to 3.5 px/hr ###
+### pos values range from 0-2000 px from QC, increasing by 1 px at a time ###
+ku         <- vector('numeric')
+range_of_y <- range(0, 3.5)
+pos        <- seq(0, 2000, 1)
+```
+
+```{r plotting-velocity-profiles}
+AllMutants_AvgParameters = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_09_AllMutants_AveragedParameters.csv") %>%
+  mutate(x0 = as.numeric(x0),
+         vf = as.numeric(vf),
+         k = as.numeric(k),
+         n = as.numeric(n))
+
+# In the averaged csv:
+## 1 = abcb19-3
+## 2 = abcb4-1
+## 3 = abcb4-2
+## 4 = abcb4-3
+## 5 = Col-0
+## 6 = pin2
+
+abcb19_3 = flf(pos,
+                      AllMutants_AvgParameters[1,]$x0,
+                      AllMutants_AvgParameters[1,]$vf,
+                      AllMutants_AvgParameters[1,]$k,
+                      AllMutants_AvgParameters[1,]$n)
+abcb4_1 = flf(pos,
+                     AllMutants_AvgParameters[2,]$x0,
+                     AllMutants_AvgParameters[2,]$vf,
+                     AllMutants_AvgParameters[2,]$k,
+                     AllMutants_AvgParameters[2,]$n)
+abcb4_2 = flf(pos,
+                   AllMutants_AvgParameters[3,]$x0,
+                   AllMutants_AvgParameters[3,]$vf,
+                   AllMutants_AvgParameters[3,]$k,
+                   AllMutants_AvgParameters[3,]$n)
+abcb4_3 = flf(pos,
+                    AllMutants_AvgParameters[4,]$x0,
+                    AllMutants_AvgParameters[4,]$vf,
+                    AllMutants_AvgParameters[4,]$k,
+                    AllMutants_AvgParameters[4,]$n)
+Col_0 = flf(pos,
+                    AllMutants_AvgParameters[5,]$x0,
+                    AllMutants_AvgParameters[5,]$vf,
+                    AllMutants_AvgParameters[5,]$k,
+                    AllMutants_AvgParameters[5,]$n)
+pin2 = flf(pos,
+                    AllMutants_AvgParameters[6,]$x0,
+                    AllMutants_AvgParameters[6,]$vf,
+                    AllMutants_AvgParameters[6,]$k,
+                    AllMutants_AvgParameters[6,]$n)
+
+velCurves = cbind(pos, abcb19_3, abcb4_1, abcb4_2, abcb4_3, Col_0, pin2)
+velCurves = data.frame(velCurves)
+
+velCurves = velCurves %>%
+  mutate(pos = pos/1500,
+       abcb19_3 = abcb19_3*0.08,
+       abcb4_1 = abcb4_1*0.08,
+       abcb4_2 = abcb4_2*0.08,
+       abcb4_3 = abcb4_3*0.08,
+       pin2 = pin2*0.08,
+       Col_0 = Col_0*0.08)
+
+velCurves_long = melt(velCurves, id.vars = "pos")
+
+write.csv(velCurves_long, "~/Desktop/2021-12-15_velCurves_long.csv")
+velCurves_long = read.csv("~/Desktop/2021-12-15_velCurves_long.csv") %>%
+  select(-X)
+
+ggplot(velCurves_long, aes(x = pos, y = value)) +
+  geom_point(aes(color = variable), size = 0.5) +
+  scale_color_manual(values = c("blue", "orange", "black", "red")) +
+  xlab("Position from Quiescent Center (mm)") +
+  ylab("Velocity from QC (mm/hr)") +
+  ggtitle("Velocity Curves for Auxin Transport Mutants") +
+  theme_bw()
+
+```
+
+```{r plotting-REGR-curves-IAA-mutants}
+AllMutants_AvgParameters = read_csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_09_AllMutants_AveragedParameters.csv") %>%
+  mutate(x0 = as.numeric(x0),
+         vf = as.numeric(vf),
+         k = as.numeric(k),
+         n = as.numeric(n))
+pos        <- seq(0, 2000, 1)
+
+# In the averaged csv:
+## 1 = abcb19-3
+## 2 = abcb4-1
+## 3 = abcb4-2
+## 4 = abcb4-3
+## 5 = Col-0
+## 6 = pin2
+
+abcb19_3 = REGR(pos,
+                      AllMutants_AvgParameters[1,]$x0,
+                      AllMutants_AvgParameters[1,]$vf,
+                      AllMutants_AvgParameters[1,]$k,
+                      AllMutants_AvgParameters[1,]$n,
+                      1)
+abcb4_1 = REGR(pos,
+                     AllMutants_AvgParameters[2,]$x0,
+                     AllMutants_AvgParameters[2,]$vf,
+                     AllMutants_AvgParameters[2,]$k,
+                     AllMutants_AvgParameters[2,]$n,
+                      1)
+abcb4_2 = REGR(pos,
+                   AllMutants_AvgParameters[3,]$x0,
+                   AllMutants_AvgParameters[3,]$vf,
+                   AllMutants_AvgParameters[3,]$k,
+                   AllMutants_AvgParameters[3,]$n,
+                      1)
+abcb4_3 = REGR(pos,
+                    AllMutants_AvgParameters[4,]$x0,
+                    AllMutants_AvgParameters[4,]$vf,
+                    AllMutants_AvgParameters[4,]$k,
+                    AllMutants_AvgParameters[4,]$n,
+                      1)
+Col_0 = REGR(pos,
+                    AllMutants_AvgParameters[5,]$x0,
+                    AllMutants_AvgParameters[5,]$vf,
+                    AllMutants_AvgParameters[5,]$k,
+                    AllMutants_AvgParameters[5,]$n,
+                      1)
+pin2 = REGR(pos,
+                    AllMutants_AvgParameters[6,]$x0,
+                    AllMutants_AvgParameters[6,]$vf,
+                    AllMutants_AvgParameters[6,]$k,
+                    AllMutants_AvgParameters[6,]$n,
+                      1)
+
+REGRCurves = cbind(pos, abcb19_3, abcb4_1, abcb4_2, abcb4_3, Col_0, pin2)
+REGRCurves = data.frame(REGRCurves)
+
+REGRCurves = REGRCurves %>%
+  mutate(pos = pos/1500,
+       abcb19_3 = abcb19_3*10000,
+       abcb4_1 = abcb4_1*10000,
+       abcb4_2 = abcb4_2*10000,
+       abcb4_3 = abcb4_3*10000,
+       pin2 = pin2*10000,
+       Col_0 = Col_0*10000)
+
+REGRCurves_long = melt(REGRCurves, id.vars = "pos")
+write.csv(REGRCurves_long, "~/Desktop/2021-12-15_REGRCurves_long.csv") # manually changed mutant's name to w/out alleles
+REGRCurves_long = read.csv("~/Desktop/2021-12-15_REGRCurves_long.csv")
+
+ggplot(REGRCurves_long, aes(x = pos, y = value)) +
+  geom_point(aes(color = variable), size = 0.5) +
+  scale_color_manual(values = c("blue", "orange", "black", "red")) +
+  xlab("Position from Quiescent Center (mm)") +
+  ylab("Relative Elemental Growth Rate from QC (%/hr)") +
+  ggtitle("REGR Curves for Auxin Transport Mutants") +
+  theme_bw()
+```

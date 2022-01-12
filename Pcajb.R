@@ -6,7 +6,8 @@
 ##
 ## Author: Julian Bustamante
 ##
-## Date Created: 2021-08-04
+## Date Created: 2020-03-05
+## Date Revised: 2021-11-01
 ##
 ## Copyright (c) Julian Bustamante, 2020
 ## Email: <jbustamante35@gmail.com>
@@ -16,12 +17,13 @@
 ## ---------------------------
 ##
 ## Notes:
-## PCA class used for Ashley's tip angle data
+##
 ##
 ## ---------------------------
 library('pracma')
 
 Pcajb <- setRefClass(
+    # Class name
     "Pcajb",
 
     # Slots
@@ -33,21 +35,17 @@ Pcajb <- setRefClass(
     # Methods
     methods = list(
         meanSubtract = function() {
-            x  <- Data
-            u  <- colMeans(x)
-            M  <- x - u
-            Mu <- list(M,u)
-
-            # Output Mu = [Mean-Subtracted Data] , [Column Means]
+            x = Data
+            u = colMeans(x)
+            M = sweep(x, 2, u)
+            Mu <- list(M,u) # WTF why do you subtract this way
             return(Mu)
         },
 
         covarMatrix = function() {
-            mu <- meanSubtract()
-            m  <- Reshape(unlist(mu[1]), size(Data,1), size(Data,2))
-            c  <- t(m) %*% m / size(m,1)
-
-            # Output [Covariance Matrix]
+            mu = meanSubtract()
+            m  = unlist(mu[[1]])
+            c  = cov(m)
             return(c)
         },
 
@@ -56,20 +54,15 @@ Pcajb <- setRefClass(
                  neigs = npc
             }
 
-            c  <- covarMatrix()
-            wv <- eigen(c)
-
-            # Eigen Vectors
-            w  <- Reshape(unlist(wv[2]), size(c,1), size(c,2))
-            w  <- w[,1:neigs]
-
-            # Eigen Values
-            v  <- Reshape(unlist(wv[1]), 1, size(c,1))
-            v  <- v[1:neigs]
-
-            wv <- list(w,v)
-
-            # Output wv = [Eigen Vectors] , [Eigen Values]
+            c  = covarMatrix()
+            #mu = meanSubtract()
+            wv = eigen(c)
+            w  = unlist(wv[[1]])
+            v  = unlist(wv[[2]])
+            w  = w[1:neigs]
+            #v  = v[,1:neigs]
+            v  = -v[,1:neigs] # Why are eigen vectors negative?
+            wv = list(w,v)
             return(wv)
         },
 
@@ -82,19 +75,19 @@ Pcajb <- setRefClass(
                  neigs = npc
              }
 
-            x  <- Data[ndims,]
-            mu <- meanSubtract()
-            wv <- eigens(neigs)
+            x  = Data[ndims,]
+            mu = meanSubtract()
+            wv = eigens(neigs)
 
-            u  <- unlist(mu[2])
-            w  <- Reshape(unlist(wv[1]), size(Data,2), neigs)
-            s  <- pcaProject(x,w,u,'sim2scr')
-
+            #u  = Reshape(unlist(mu[2]), 1, size(Data,2))
+            #v  = Reshape(unlist(wv[2]), size(Data,1), neigs)
+            u  = unlist(mu[[2]])
+            v  = unlist(wv[[2]])
+            s  = pcaProject(x,v,u,'sim2scr')
             return(s)
         },
 
         SimData = function(ndims=0,neigs=0) {
-            # Simulate data via projection and back-projection
              if (ndims == 0) {
                  ndims = 1:size(Data,1)
              }
@@ -103,14 +96,15 @@ Pcajb <- setRefClass(
                  neigs = npc
              }
 
-            mu <- meanSubtract()
-            wv <- eigens(neigs)
-            s  <- PCAScores(ndims,neigs)
-
-            u  <- unlist(mu[2])
-            w  <- Reshape(unlist(wv[1]), size(Data,2), neigs)
-            Y  <- pcaProject(s,w,u,'scr2sim')
-            return(Y)
+            mu = meanSubtract()
+            wv = eigens(neigs)
+            s  = PCAScores(ndims,neigs)
+            #u  = Reshape(unlist(mu[2]), 1, size(Data,2))
+            #v  = Reshape(unlist(wv[2]), size(Data,1), neigs)
+            u  = unlist(mu[[2]])
+            v  = unlist(wv[[2]])
+            xx = pcaProject(s,v,u,'scr2sim')
+            return(xx)
         },
 
         VarExplained = function(pct=0,neigs=0) {
@@ -122,27 +116,25 @@ Pcajb <- setRefClass(
                 neigs = npc
             }
 
-            sz = size(Data,2)
-            wv <- eigens(sz)
-            v  <- Reshape(unlist(wv[2]), 1, sz)
-            V  <- cumsum(v / sum(v))
-            T  <- length(V[V <= pct]) + 1
-            VT <- list(V[1:neigs],T)
-
-            # Output VT = [Variance] , [Optimal PCs]
+            wv = eigens(neigs)
+            w  = Reshape(unlist(wv[1]), 1, neigs)
+            V  = cumsum(w / sum(w))
+            T  = length(V[V <= pct]) + 1
+            VT = list(V,T)
             return(VT)
         },
 
-        pcaProject = function(x,w,u,req) {
+        pcaProject = function(x,v,u,req) {
             if (req == 'scr2sim') {
-                # Back-project PC space to raw space
-                m <- x %*% t(w)
-                return(m + c(u))
+                m = x %*% t(v)
+                #return(m + c(u))
+                return(sweep(m, 2, u, FUN="+"))
 
             } else if (req == 'sim2scr') {
-                # Project raw space to PC space
-                m <- x - c(u)
-                return(m %*% w)
+                #m = x - c(u)
+                # WTF
+                m = sweep(x, 2, u)
+                return(m %*% v)
 
             } else {
                 return("Invalid projection")

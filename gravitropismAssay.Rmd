@@ -17,11 +17,13 @@ library(dplyr)
 library('pracma')
 source('Pcajb.R')
 library("gridExtra")
+# library(Hmisc)
 ```
 
 ```{r data}
 # tipAngles = read_csv("~/Desktop/GravitropismAssay/return/2021-08-01_gravi_tipAngles_edited.csv")
-tipAngles = read_csv("~/Desktop/GravitropismAssay/return/2021-08-16_gravi_tipAngles_norm_transposed.csv")
+# tipAngles = read_csv("~/Desktop/GravitropismAssay/return/2021-08-16_gravi_tipAngles_norm_transposed.csv")
+tipAngles = read_csv("~/Desktop/RIL2_GravitropismData.csv") # Candace's tip angle data
 
 # Average tip angles by RIL
 avg_TipAngles = tipAngles %>%
@@ -29,7 +31,7 @@ avg_TipAngles = tipAngles %>%
   # select(-Index_RIL, -Index_cam, -Index_middle, -RIL_partName, -RIL_fullName) %>%
   summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
 
-write.csv(avg_TipAngles, "~/Desktop/GravitropismAssay/return/2021-08-16_gravi_tipAngles_norm_transp_avg.csv")
+write.csv(avg_TipAngles, "~/Desktop/2021-10-12_CandaceRIL2_tipAngles_avg.csv")
 # Tasks To Do:
 ## Then plot groups by trait
 ## Plot each RIL's avg data
@@ -79,24 +81,31 @@ write.csv(avg_TipAngles, "~/Desktop/GravitropismAssay/return/2021-08-01_gravi_ti
 
 ```{r kinematicTraits-DistributionPlots}
 # Load in kinematic traits, averaged by RIL
-avg_KineTraits = read_csv("~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+avg_KineTraits = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+
+
+avg_KineTraits = avg_KineTraits %>%
+  mutate(maxREGR = (maxREGR*0.08)*100000,
+         posMaxREGR = posMaxREGR/1500,
+         overallGrowthRate = overallGrowthRate*0.08,
+         growthZoneWidth = growthZoneWidth/1500)
 
 # Density plots by kinematic trait
 dens1 = ggplot(avg_KineTraits, aes(x = avg_KineTraits$maxREGR)) +
-  geom_density() +
+  geom_density(fill = "thistle") +
   xlab("Maximum REGR (%/hr)") +
   theme_bw()
 dens2 = ggplot(avg_KineTraits, aes(x = avg_KineTraits$posMaxREGR)) +
-  geom_density() +
-  xlab("position of maximum REGR (%/hr)") +
+  geom_density(fill = "thistle") +
+  xlab("Position of Maximum REGR (mm)") +
   theme_bw()
 dens3 = ggplot(avg_KineTraits, aes(x = avg_KineTraits$overallGrowthRate)) +
-  geom_density() +
-  xlab("Overall Growth Rate (px/frame)") +
+  geom_density(fill = "thistle") +
+  xlab("Overall Growth Rate (mm/hr)") +
   theme_bw()
 dens4 = ggplot(avg_KineTraits, aes(x = avg_KineTraits$growthZoneWidth)) +
-  geom_density() +
-  xlab("Width of Growth Zone (px)") +
+  geom_density(fill = "thistle") +
+  xlab("Width of Growth Zone (mm)") +
   theme_bw()
 
 # Plot all density plots on one page
@@ -106,37 +115,57 @@ grid.arrange(dens1, dens2, dens3, dens4,
 
 ```{r PCA-of-tip-angles}
 # dnm = "~/Dropbox/EdgarSpalding/labdata/development/Misc/210804/"
-dnm = "~/Desktop/GravitropismAssay/return/"
-wnm = "~/kinematics-flf"
+# dnm = "~/Desktop/GravitropismAssay/return/"
+dnm = "~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/"
+wnm = "~/kinematics-flf/"
 setwd(wnm)
 
 # Load tip angles
 ## replaced_NAs means that we took out the NAs and made that value the same as the previous frame's
 ## Ex: last value was NA, second to last value was 0.435; we replaced NA with 0.435
 # A <- read_csv(paste(dnm , "2021-08-04_gravi_tipAngles_replacedNAs.csv", sep = "")) #non-N data
-A <- read_csv(paste(dnm , "2021-08-15_gravi_tipAngles_normalized.csv", sep = "")) # Normalized data
-A <- A  %>%
-  # select(-Index_RIL, -Index_cam, -Index_middle, -RIL_partName, -RIL_fullName, -RIL)
+# A <- read_csv(paste(dnm , "2021-08-15_gravi_tipAngles_normalized.csv", sep = "")) # Normalized data
+A <- read.csv(paste(dnm , "RIL1_GravitropismData_tipAngles.csv", sep = ""))
+# A <- read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv")
+# read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-08-04_gravi_tipAngles_replacedNAs.csv")
+B = A %>%
   select(-RIL)
 
-X <- as.matrix(A)
+X <- as.matrix(B)
 
 # Set PCA parameters
 n  = 50  # Number of PCs
 t  = 0.99 # Threshold for variance explained
+source('Pcajb.R') # This needs to be reloaded for the next line to work
 px <- Pcajb(Data=X, npc=n)
 MU <- px$meanSubtract()
-mu <- Reshape(unlist(MU[1]), size(X,1), size(X,2)) # Mean-Subtracted Matrix
-u  <- unlist(MU[2])                                # Mean Values
+mu <- unlist(MU[[1]])                              # Mean-Subtracted Matrix
+u  <- unlist(MU[[2]])                              # Mean Values
 c  <- px$covarMatrix()                             # Covariance Matrix (dot product of transposed & regular data)
 WV <- px$eigens()
-w  <- Reshape(unlist(WV[1]), size(X,2), n)         # Eigen Vector
-v  <- unlist(WV[2])                                # Eigen Values
+w  <- unlist(WV[[1]])                              # Eigen Vector
+v  <- unlist(WV[[2]])                              # Eigen Values
 S  <- px$PCAScores()                               # PC Scores (S[,1]) = 1st PC scores, plot these vs traits
 Y  <- px$SimData()                                 # Simulated Matrix
 V  <- px$VarExplained(t,n)                         
-v  <- unlist(V[1])                                 # Variance Explained
-o  <- unlist(V[2])                                 # Number of PCs to reach threshold
+v  <- unlist(V[[1]])                               # Variance Explained
+o  <- unlist(V[[2]])                               # Number of PCs to reach threshold
+
+# Save PC Scores as csv
+# S = as.data.frame(S)
+# write_csv(S, "~/Desktop/GravitropismAssay/tipAngle_PC-vs-KinematicTraits/2021-11-11_CandacetipAnglePCScores.csv")
+
+# Add RIL column to PC scores dataframe
+## Average PC score by RIL
+## Save that junk
+PCScores = cbind(A$RIL, S)
+PCScores = data.frame(PCScores)
+colnames(PCScores)[1] <- "RIL"
+colnames(PCScores)[2] <- "PC_1"
+colnames(PCScores)[3] <- "PC_2"
+colnames(PCScores)[4] <- "PC_3"
+
+write_csv(PCScores, "~/Desktop/GravitropismAssay/tipAngle_PC-vs-KinematicTraits/2021-11-11_RIL1TipAnglePCScores.csv")
 ```
 
 ```{r plot-pca}
@@ -157,14 +186,11 @@ data = read_csv(paste(dnm , "2021-08-15_gravi_tipAngles_replacedNAs_transposed.c
 dataMatrix <- as.matrix(data)
 firstValue = data[1,2]
 
-data %>%
-    mutate(`122Adj` = `122` - first(x = `122`)) # works! now to do this to entire dataset :)...
-
 # Normalize tip angle data
 ## Subtracts the first value from the entire column, for all RIL columns
 dataAdj = data %>%
   mutate_at(2:286, funs(c(first(.), (. - first(.))[-1])) ) # does rows 2:241, doesn't do first entry
-
+s
 # Saved the data here, made 1st entry = 0 in Excel
 write.csv(dataAdj, "~/Desktop/GravitropismAssay/return/2021-08-15_gravi_tipAngles_normalized.csv")
 
@@ -180,52 +206,74 @@ tipAngles = read_csv(paste(dnm , "2021-08-15_gravi_tipAngles_normalized.csv", se
 # 2021-08-20
 ## Nathan calc'd PC scores for Candace's tip angle data
 ## Here I average those by RIL & will plot that by my kinematic traits
-PCscores = read.csv("~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/RIL1_PC1_GravitropismData.csv")
+PCscores_Nathan = read.csv("~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/RIL1_PC1_GravitropismData.csv") # Nathan's way
+PCscores_Julian = read.csv("~/Desktop/GravitropismAssay/tipAngle_PC-vs-KinematicTraits/2021-11-11_RIL1TipAnglePCScores.csv") # Julian's way
 
-avg_PCscores = PCscores %>%
+# Averaging PC scores by RIL (only do if it's Nathan's data)
+avg_PCscores_Julian = PCscores_Julian %>%
   group_by(RIL) %>%
   # select(-Index_RIL, -Index_cam, -Index_middle, -RIL_partName, -RIL_fullName) %>%
   summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
 
 # Plot PC1 & PC2 vs RIL for fun, no pattern
-plot(avg_PCscores$RIL, avg_PCscores$PC_1)
-plot(avg_PCscores$RIL, avg_PCscores$PC_2)
+# plot(avg_PCscores$RIL, avg_PCscores$PC_1)
+# plot(avg_PCscores$RIL, avg_PCscores$PC_2)
 
-write.csv(avg_PCscores, "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/RIL1_PC1_GravitropismData_Averaged.csv")
+# write.csv(avg_PCscores, "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/RIL1_PC1_GravitropismData_Averaged.csv")
 
 # Load in my averaged kinematic traits
-kineTraits = read_csv("~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+kineTraits = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
 
 # Made own csv file of kinematic traits & PC scores for the RILs with extreme kinematic trait values via Excel:
 ## CandacePC_vs_KineTraits = read_csv("~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-KinematicTraits.csv")
 # Then I made separate csv files by kinematic traits, containing PC1 & PC2 scores & 5 highest and 5 lowest kinematic traits
 
-# Below are PC1 scores vs kinematic traits!
-## Overall Growth Rate
-CandacePC_vs_overallGrowthRate = read.csv(
-  "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-overallGrowthRate.csv")
-## Width of Growth Zone
-CandacePC_vs_growthZoneWidth = read.csv(
-  "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-growthZoneWidth.csv")
-## Position of maxREGR
-CandacePC_vs_posMaxREGR = read.csv(
-  "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-posMaxREGR.csv")
-## maxREGR
-CandacePC_vs_maxREGR = read.csv(
-  "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-maxREGR.csv")
+PC_vs_KineTraits = cbind(avg_PCscores, kineTraits)
+# 
+# # Below are PC1 scores vs kinematic traits!
+# ## Overall Growth Rate
+# CandacePC_vs_overallGrowthRate = read.csv(
+#   "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-overallGrowthRate.csv")
+# ## Width of Growth Zone
+# CandacePC_vs_growthZoneWidth = read.csv(
+#   "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-growthZoneWidth.csv")
+# ## Position of maxREGR
+# CandacePC_vs_posMaxREGR = read.csv(
+#   "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-posMaxREGR.csv")
+# ## maxREGR
+# CandacePC_vs_maxREGR = read.csv(
+#   "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-08-20_CandacePCscores-vs-maxREGR.csv")
+
+# Trying to format by rounding down the number of decimal places
+# PC_vs_KineTraits$overallGrowthRate = formatC(PC_vs_KineTraits, format = "f", digits = 4)
+# PC_vs_KineTraits = format(PC_vs_KineTraits, digits = 2)
+# PC_vs_KineTraits$overallGrowthRate = format(as.numeric(PC_vs_KineTraits$overallGrowthRate), digits = 3)
+write.csv(PC_vs_KineTraits, "~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021-11-11_RIL1TipAnglePCScores-w-KineTraits.csv")
 
 # Now plot them!
-p1 <- ggplot(CandacePC_vs_overallGrowthRate, aes(x = overallGrowthRate, y = PC_1)) +
-  geom_point(aes(color = Value)) +
+p1 <- ggplot(PC_vs_KineTraits, aes(x = as.numeric(overallGrowthRate))) +
+  geom_point(aes(y = PC_2)) + #color = Value <- used when I highlighted the 5 highest & lowest values
+  xlab("Overall Growth Rate") +
+  ylab("PC2 of RIL 1 Tip Angles") +
+  scale_x_continuous(limits=c(0.5,4)) + 
   theme_bw()
-p2 <- ggplot(CandacePC_vs_growthZoneWidth, aes(x = growthZoneWidth, y = PC_1)) +
-  geom_point(aes(color = Value)) +
+p2 <- ggplot(PC_vs_KineTraits, aes(x = as.numeric(growthZoneWidth))) +
+  geom_point(aes(y = PC_2)) +
+  xlab("Width of Growth Zone") +
+  ylab("PC2 of RIL 1 Tip Angles") +
+  scale_x_continuous(limits=c(400,1200)) + 
   theme_bw()
-p3 <- ggplot(CandacePC_vs_posMaxREGR, aes(x = posMaxREGR, y = PC_1)) +
-  geom_point(aes(color = Value)) +
+p3 <- ggplot(PC_vs_KineTraits, aes(x = as.numeric(posMaxREGR))) +
+  geom_point(aes(y = PC_2)) +
+  xlab("Position of Max REGR from Root Tip") +
+  ylab("PC2 of RIL 1 Tip Angles") +
+  scale_x_continuous(limits=c(350,850)) + 
   theme_bw()
-p4 <- ggplot(CandacePC_vs_maxREGR, aes(x = maxREGR, y = PC_1)) +
-  geom_point(aes(color = Value)) +
+p4 <- ggplot(PC_vs_KineTraits, aes(x = as.numeric(maxREGR))) +
+  geom_point(aes(y = PC_2)) +
+  xlab("Maximum Relative Elemental Growth Rate") +
+  ylab("PC2 of RIL 1 Tip Angles") +
+  scale_x_continuous(limits=c(0.0025,0.005)) +
   theme_bw()
 
 # Arrange all the plots on one page
@@ -239,63 +287,479 @@ grid.arrange(p1, p2, p3, p4,
 ## Other than this, no pattern is seen in the low and high points. I'll plot all of the RIL values to see the overall population plot
 ```
 
-
 ```{r same-as-above-but-all-RILs}
 # 2021-08-23
-## Loading in PC scores avg by RIL (created in above code chunk)
-avg_PCscores = read_csv("~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/RIL1_PC1_GravitropismData_Averaged.csv")
+## Loading in PC scores avg by RIL (created in code chunk "own-PCA-in-R", below)
+avg_PCscores = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-12_RIL2PCScores.csv")
 
 # Load in my averaged kinematic traits
-kineTraits = read_csv("~/Desktop/GravitropismAssay/Candace_PC-vs-KinematicTraits/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+kineTraits = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
 
 # Now plot Kinematic Traits vs Candace PC 1
-p5 <- ggplot(kineTraits, aes(x = overallGrowthRate, y = avg_PCscores$PC_1)) +
-  geom_point() +
-  ylab("PC 1") +
+p5 <- ggplot(kineTraits, aes(x = overallGrowthRate)) +
+  geom_point(aes(y = avg_PCscores$X4)) +
+  ylab("RIL2 PC 2") +
   theme_bw()
-p6 <- ggplot(kineTraits, aes(x = growthZoneWidth, y = avg_PCscores$PC_1)) +
-  geom_point() + 
-  ylab("PC 1") +
+p6 <- ggplot(kineTraits, aes(x = growthZoneWidth)) +
+  geom_point(aes(y = avg_PCscores$X4)) + 
+  ylab("RIL2 PC 2") +
   theme_bw()
-p7 <- ggplot(kineTraits, aes(x = posMaxREGR, y = avg_PCscores$PC_1)) +
-  geom_point() +
-  ylab("PC 1") +
+p7 <- ggplot(kineTraits, aes(x = posMaxREGR)) +
+  geom_point(aes(y = avg_PCscores$X4)) +
+  ylab("RIL2 PC 2") +
   theme_bw()
-p8 <- ggplot(kineTraits, aes(x = maxREGR, y = avg_PCscores$PC_1)) +
-  geom_point() +
-  ylab("PC 1") +
+p8 <- ggplot(kineTraits, aes(x = maxREGR)) +
+  geom_point(aes(y = avg_PCscores$X4)) +
+  ylab("RIL2 PC 2") +
   theme_bw()
-
 
 # Arrange all the plots on one page
+# library("gridExtra")
 grid.arrange(p5, p6, p7, p8, 
              ncol = 2, nrow = 2)
 
-# Conclusion:
-## No pattern...
+# Same as above, but with flf parameters (x0, vf, k, & n) vs Candace PC 1
+parameters = read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_01_08_AllRILs_AveragedParameters-removedNoMatZoneRoots_89REMOVED.csv")
 
-# Now plot Kinematic Traits vs Candace PC 2
-p9 <- ggplot(kineTraits, aes(x = overallGrowthRate, y = avg_PCscores$PC_1)) +
-  geom_point() +
-  ylab("PC 1") +
+p9 <- ggplot(kineTraits, aes(x = overallGrowthRate)) +
+  geom_point(aes(y = avg_PCscores$X4)) +
+  ylab("RIL2 PC 2") +
+  xlab("Parameter vf") +
   theme_bw()
-p10 <- ggplot(kineTraits, aes(x = growthZoneWidth, y = avg_PCscores$PC_1)) +
-  geom_point() + 
-  ylab("PC 1") +
+p10 <- ggplot(parameters, aes(x = x0)) +
+  geom_point(aes(y = avg_PCscores$X4)) + 
+  ylab("RIL2 PC 2") +
+  xlab("Parameter x0") +
   theme_bw()
-p11 <- ggplot(kineTraits, aes(x = posMaxREGR, y = avg_PCscores$PC_1)) +
-  geom_point() +
-  ylab("PC 1") +
+p11 <- ggplot(parameters, aes(x = logK)) +
+  geom_point(aes(y = avg_PCscores$X4)) +
+  ylab("RIL2 PC 2") +
+  xlab("Parameter log(k)") +
   theme_bw()
-p12 <- ggplot(kineTraits, aes(x = maxREGR, y = avg_PCscores$PC_1)) +
-  geom_point() +
-  ylab("PC 1") +
+p12 <- ggplot(parameters, aes(x = logN)) +
+  geom_point(aes(y = avg_PCscores$X4)) +
+  ylab("RIL2 PC 2") +
+  xlab("Parameter log(n)") +
   theme_bw()
 
 # Arrange all the plots on one page
+# library("gridExtra")
 grid.arrange(p9, p10, p11, p12, 
              ncol = 2, nrow = 2)
 ```
+
+```{r own-PCA-in-R}
+# Load in Candace's tip angle data (for datasets RIL1 and RIL2)
+tipAngles = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL2_GravitropismData_tipAngles.csv") 
+scores <- prcomp(tipAngles[,c(2:242)], center = TRUE, scale. = FALSE)
+# This matches 
+
+plot(scores$center) # shows avg tip angle over time
+scores
+indexNames = tipAngles$RIL
+n = 7
+PCScores_Ashley = matrix(NA, 162, n)
+for (i in 1:n){
+  for (j in 1:162){ # 162 = number of RILs
+    index = which(indexNames == j)
+    PCScores_Ashley[j,i] = mean(scores$x[index,i])
+  }
+}
+
+plot(scores[1,1], Y)
+RIL = c(1:162)
+PCScores_Ashley = cbind(RIL, PCScores_Ashley)
+write.csv(PCScores_Ashley, "~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-12_RIL2PCScores.csv")
+
+```
+
+```{r PCA-on-Kine-Traits}
+kineTraits = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+
+# Need each row to be numeric for PCA
+kineTraits$maxREGR = as.numeric(kineTraits$maxREGR)
+kineTraits$overallGrowthRate = as.numeric(kineTraits$overallGrowthRate)
+kineTraits$posMaxREGR = as.numeric(kineTraits$posMaxREGR)
+kineTraits$growthZoneWidth = as.numeric(kineTraits$growthZoneWidth)
+
+
+index = setdiff(c(1:162), c(5, 89, 115)) # Get rid of NA rows (RILs 5, 89, & 115)
+scores <- prcomp(kineTraits[index,c(1:4)], center = TRUE, scale. = FALSE)
+n = 4
+PCScores_Ashley = matrix(NA, 162, n)
+PCScores_Ashley[index, c(1:4)] = scores$x
+
+write.csv(PCScores_Ashley, "~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021-11-12_PCA-KineTraits.csv")
+
+###########################################################################################
+# Now z-score normalize your data (stretch/compress data so that stdev is 1 for each trait)
+###########################################################################################
+
+# Plot GR vs width with mean point
+plot(kineTraits$overallGrowthRate, kineTraits$growthZoneWidth) + 
+  points((mean(kineTraits$overallGrowthRate, na.rm = TRUE)), (mean(kineTraits$growthZoneWidth, na.rm = TRUE)), col = "red", pch = 19) # Put mean in red & filled in circle (pch = 19) on the plot!
+
+# zScoreNorm_maxREGR = normalize(kineTraits$maxREGR, method="Z-score") # no such thing as this function even though it's in RDocumentation...?
+# zScoreNorm_maxREGR = znorm(kineTraits$maxREGR) # fuuuudge
+
+# I'll just manually do this...
+# This was helpful: https://bookdown.org/ndphillips/YaRrr/standardization-z-score.html
+## z-score is a way to compare two different datasets that have two different scales (0-10 vs 1000-2000)
+mean_orig = mean(kineTraits$maxREGR, na.rm = TRUE)
+stdev_orig = sd(kineTraits$maxREGR, na.rm = TRUE)
+zScoreNorm_maxREGR <- (kineTraits$maxREGR - mean_orig) / stdev_orig
+mean(zScoreNorm_maxREGR, na.rm = TRUE) # new mean should be super small, close to 0
+sd(zScoreNorm_maxREGR, na.rm = TRUE) # new stdev should be 1
+
+```
+
+```{r fun-time-with-Nathan-and-multivariate-regression-fit}
+################################################
+# Beginning "Fun with Nathan" Segment 10-28-2021
+################################################
+# Load in Candace's tip angle data (for datasets RIL1 and RIL2)
+tipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv") # Candace's tip angle data
+
+# Average tip angles by RIL
+avg_TipAngles = tipAngles %>%
+  group_by(RIL) %>%
+  summarise_each(funs(mean(., na.rm = TRUE)))
+
+avg_KineTraits = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+avg_RIL1PCscores = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-12_RIL1PCScores.csv")
+avg_RIL2PCscores = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-12_RIL2PCScores.csv")
+
+# Load in the growth rate data of gravitropism samples
+Gravi_GrowthRates = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-08_CandaceRIL1-2_growthRates.csv")
+
+# Load in dataset of real & predicted kineTraits
+real_predictedKineTraits = read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021-11-12_Real-Predicted_Kine-GraviTraits_PCs.csv")
+
+plot(avg_PCscores$PC_1, avg_PCscores$PC_2)
+
+colPC = colnames(avg_TipAngles[,-1]) # gets the column names & saves it
+length(colPC) # checks length of column names
+colPC[1] # checks value in 1st row
+colREGR = colnames(avg_KineTraits[,-1]) # create list with column names & removes RIL so that it's only tip angle times
+cor.test(avg_TipAngles["Angle_at_28_min"], avg_KineTraits[colREGR[2]]) # correlation test b/w tipangles & kine traits
+# Last line didn't work
+
+
+X = avg_KineTraits[c(2,3,4)] # all kine but overallGrowthRate
+Y = Gravi_GrowthRates[c(2)] # RIL2 GR
+Y = avg_KineTraits[c(5)] # kine growth zone width
+Y = avg_KineTraits[c(3)] # Test 1 - can we go from Kine traits to overallGR - yes we can (did QTL)
+Y = Gravi_GrowthRates$RIL1_GrowthRate # Test 2 - can we go from kine overallGR to RIL1 Gravi GR
+X = avg_KineTraits[c(2:5)] # Test 2.5 - If we include kine overallGR in X, does that do a better job at predicting RIL1 Gravi GR?, & keep Y from Test 2
+Y = avg_PCscores[[3]] # first 2 columns are header and RIL columns!
+# Test 3 - can we go from kine traits to PC scores of gravi tip angles, X from Test 2.5
+Y = scores[,1]
+# Y = data_frame(Y)
+# write_csv(Y, "~/Desktop/2021-11-10_PC1fromTipAngles_AshVersion.csv")
+
+## Redo on 16 November 2021 ##
+X = avg_KineTraits[c(2,3,4,5)] # all kine traits
+Y = avg_RIL1PCscores[c(2)]
+
+
+# Create model of multiple linear regression
+model = lsfit(X, Y, wt = NULL, intercept = TRUE, tolerance = 1e-07)
+
+# Get the coefficients for each PC for future use
+model$coefficients
+length(model$coefficients)
+c = model$coefficients
+# cfaux = rand(1,4) # only use if testing how a random set of 4 numbers (not data from model) can make overlapping QTLs
+# c = cfaux
+result = model$coefficients[[1]]
+for (i in 2:length(c)){
+  result = result + c[[i]]*X[,i-1]
+}
+
+W = c[c(2:4)]
+norm(W)
+
+result = 0
+for (k in 1:3){
+  result = result + W[k] * X[,k]
+}
+mean(X[1], na.rm = TRUE)
+
+# for loop above does this, so don't need code below
+# result = model$coefficients[[1]]+model$coefficients[[2]]*X$maxREGR+model$coefficients[[3]]*X$posMaxREGR+model$coefficients[[4]]*X$growthZoneWidth
+# 
+# 
+# # Run the model on the PC data to see if you get similar kinematic trait values as the raw data kine trait values
+# result = model$coefficients[[1]]+model$coefficients[[2]]*avg_PCscores$PC_1+model$coefficients[[3]]*avg_PCscores$PC_2+model$coefficients[[4]]*avg_PCscores$PC_3+model$coefficients[[5]]*avg_PCscores$PC_4+model$coefficients[[6]]*avg_PCscores$PC_5
+
+# Plot the raw and estimated/model kinematic traits
+plot(result ~ Y)
+# Run correlation test b/w raw and estimated/model kinematic trait
+rawEstimatedTraitCorrelation = cor(result, Y)
+rawEstimatedTraitCorrelation
+
+data = read.csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021-11-12_Real-Predicted_Kine-GraviTraits_PCs.csv")
+data = cbind(data, result)
+colnames(data)[16] <- "PredictedRIL1PC1" # change [index] with column just added!
+
+# RIL = c(1:162)
+# tmpData = cbind(RIL, result)
+# 
+# write_csv(data, "~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/tmp.csv")
+
+write_csv(data, "~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021-11-12_Real-Predicted_Kine-GraviTraits_PCs.csv")
+cor.test(data$PredictedGrowthZoneWidth, data$growthZoneWidth) # correlation test b/w actual & predicted RIL1 GRs
+
+###################################################################################
+# Something else below here
+###################################################################################
+# Check st dev to see the percent variance explained from the estimated/model kinematic trait of the total raw kinematic trait
+tmpY = na.omit(Y)
+std(tmpY)
+std(result)/std(tmpY)
+
+# Now we're checking Candace's growth rate vs my kinematic growth rate
+## This will give us a look at how similar our growth rates were in the same population 10 years apart & with different conditions
+## This will become our new standard (considered 100% the same at .34 correlation)
+### Therefore, we will always divide correlations between raw & model/estimated kine traits to compare how the correlation b/w those compares to the standard of growth rate
+graviGrowthRate = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1Dataset_GrowthRate.csv", head = FALSE, sep=",")
+graviGrowthRate = graviGrowthRate[1:162]
+plot(kineTraits$overallGrowthRate, graviGrowthRate)
+growthRateCorrelation = cor.test(kineTraits$overallGrowthRate, graviGrowthRate)
+rawEstimatedTraitCorrelation$estimate/growthRateCorrelation$estimate
+
+REGRRilNames = kineTraits$RILs[1] # Get all RIL names, can select by row
+PCRILNames = avg_PCscores$RIL[1] # Get all RIL names, can select by row
+
+REGRRilNames == PCRILNames # Sanity check that the RILs match in each dataset
+
+plot(avg_PCscores$PC_2, avg_PCscores$PC_1)
+
+plot(avg_KineTraits$growthZoneWidth, avg_KineTraits$posMaxREGR)
+plot(avg_KineTraits$growthZoneWidth, avg_KineTraits$maxREGR)
+plot(avg_KineTraits$growthZoneWidth, avg_KineTraits$overallGrowthRate)
+
+cor(avg_KineTraits$overallGrowthRate, result$maxREGR, use = "complete.obs")
+cor(avg_RIL1PCscores$V1, avg_RIL2PCscores$X3, use = "complete.obs")
+
+cor(avg_RIL1PCscores$V1, result$maxREGR, use = "complete.obs")
+```
+
+```{r Predicted-kine-gr-v-RIL1-2gr}
+growthRates = read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021-11-12_Real-Predicted_Kine-GraviTraits_PCs.csv")
+
+plot(growthRates$Predicted_KineGrowthRate, growthRates$RIL1_GrowthRate)
+plot(growthRates$Predicted_KineGrowthRate, growthRates$RIL2_GrowthRate)
+
+cor(as.numeric(growthRates$Predicted_KineGrowthRate), as.numeric(growthRates$overallGrowthRate), use = "complete.obs")
+
+cor(as.numeric(growthRates$RIL1_GrowthRate), as.numeric(growthRates$overallGrowthRate), use = "complete.obs")
+cor(as.numeric(growthRates$RIL2_GrowthRate), as.numeric(growthRates$overallGrowthRate), use = "complete.obs")
+
+cor(as.numeric(growthRates$Predicted_KineGrowthRate), as.numeric(growthRates$RIL1_GrowthRate), use = "complete.obs")
+cor(as.numeric(growthRates$Predicted_KineGrowthRate), as.numeric(growthRates$RIL2_GrowthRate), use = "complete.obs")
+```
+
+# Compare RILs with high and low kinematic traits
+## Use Candace's data (RIL1 & RIL2)
+```{r Candace-RILs-with-hi/lo-kinematic-traits}
+# Load in Candace's tip angle data (for datasets RIL1 and RIL2)
+tipAngles = read_csv("/Users/ashleyhenry/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv") # Candace's tip angle data
+# tipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL2_GravitropismData_tipAngles.csv") # Candace's tip angle data
+
+# Average tip angles by RIL
+avg_TipAngles = tipAngles %>%
+  group_by(RIL) %>%
+  # select(-Index_RIL, -Index_cam, -Index_middle, -RIL_partName, -RIL_fullName) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
+# Save work (for datasets RIL1 and RIL2)
+# write.csv(avg_TipAngles, "~/Desktop/2021-10-12_CandaceRIL2_tipAngles_avg.csv")
+
+# load in my kinematic traits
+avg_KineTraits = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+
+# Transpose dataset & keep column names as RIL #
+RIL = avg_TipAngles$RIL
+time = seq(0,481, by = 2)
+time = time/60
+data_transposed = t(avg_TipAngles[,-1])
+data_transposed = data.frame(data_transposed)
+colnames(data_transposed) = RIL
+colnames(data_transposed) <- paste("RIL", colnames(data_transposed), sep = "")
+data_transposed = cbind(time, data_transposed)
+
+# Make datasets for each kinematic trait
+## 1st 3 are highest values for that trait, last 3 are lowest values
+## Values found from View(avg_KineTraits) & toggle column values
+maxREGR = data_transposed %>%
+  select("time", "RIL137", "RIL85", "RIL65", "RIL44", "RIL122", "RIL1")
+overallGrowthRate = data_transposed %>%
+  select("time", "RIL41", "RIL85", "RIL86", "RIL2", "RIL14", "RIL1")
+positionMaxREGR = data_transposed %>%
+  select("time", "RIL41", "RIL36", "RIL141", "RIL14", "RIL1", "RIL2")
+growthZoneWidth = data_transposed %>%
+  select("time", "RIL73", "RIL41", "RIL8", "RIL14", "RIL2", "RIL1")
+
+# Melt that junk
+maxREGR_long = melt(maxREGR, id.vars = "time")
+overallGrowthRate_long = melt(overallGrowthRate, id.vars = "time")
+positionMaxREGR_long = melt(positionMaxREGR, id.vars = "time")
+growthZoneWidth_long = melt(growthZoneWidth, id.vars = "time")
+
+# write.csv(maxREGR_long, "~/Desktop/2021-10-28_maxREGR_long.csv")
+# write.csv(overallGrowthRate_long, "~/Desktop/2021-10-28_overallGrowthRate_long.csv")
+# write.csv(positionMaxREGR_long, "~/Desktop/2021-10-28_positionMaxREGR_long.csv")
+# write.csv(growthZoneWidth_long, "~/Desktop/2021-10-28_growthZoneWidth_long.csv")
+# 
+maxREGR_long = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-10-28_maxREGR_long.csv")
+overallGrowthRate_long = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-10-28_overallGrowthRate_long.csv")
+positionMaxREGR_long = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-10-28_positionMaxREGR_long.csv")
+growthZoneWidth_long = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-10-28_growthZoneWidth_long.csv")
+
+  
+# Plot that junk
+maxREGR_plot = ggplot(maxREGR_long, aes(x = time)) +
+  geom_point(aes(y = value, color = trait, stroke = 0, size = 2)) + 
+  ggtitle("Maximum REGR") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+overallGrowthRate_plot = ggplot(overallGrowthRate_long, aes(x = time)) +
+  geom_point(aes(y = value, color = trait)) + 
+  ggtitle("Overall Growth Rate") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+positionMaxREGR_plot = ggplot(positionMaxREGR_long, aes(x = time)) +
+  geom_point(aes(y = value, color = trait)) + 
+  ggtitle("Position of Maximum REGR") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+growthZoneWidth_plot = ggplot(growthZoneWidth_long, aes(x = time)) +
+  geom_point(aes(y = value, color = trait)) + 
+  ggtitle("Width of Growth Zone") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+
+grid.arrange(maxREGR_plot, 
+             overallGrowthRate_plot, 
+             positionMaxREGR_plot, 
+             growthZoneWidth_plot, 
+             ncol = 2, nrow = 2)
+```
+
+```{r Candace-RILs-with-hi/lo-flf-parameters}
+# Load in Candace's tip angle data (for datasets RIL1 and RIL2)
+# tipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv") # Candace's tip angle data
+tipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv") # Candace's tip angle data
+
+# Average tip angles by RIL
+avg_TipAngles = tipAngles %>%
+  group_by(RIL) %>%
+  # select(-Index_RIL, -Index_cam, -Index_middle, -RIL_partName, -RIL_fullName) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
+
+# load in my flf parameters
+avg_parameters = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_01_08_AllRILs_AveragedParameters-removedNoMatZoneRoots_89REMOVED_FINAL.csv")
+
+# Transpose dataset & keep column names as RIL #
+RIL = avg_TipAngles$RIL
+time = seq(0,481, by = 2)
+time = time/60
+data_transposed = t(avg_TipAngles[,-1])
+data_transposed = data.frame(data_transposed)
+colnames(data_transposed) = RIL
+colnames(data_transposed) <- paste("RIL", colnames(data_transposed), sep = "")
+data_transposed = cbind(time, data_transposed)
+
+
+# Make datasets for each kinematic trait
+## 1st 3 are highest values for that trait, last 3 are lowest values
+## Values found from View(avg_KineTraits) & toggle column values
+x0 = data_transposed %>%
+  select("time", "RIL61", "RIL35", "RIL29", "RIL8", "RIL14", "RIL65")
+overallGrowthRate = data_transposed %>%
+  select("time", "RIL41", "RIL85", "RIL86", "RIL2", "RIL14", "RIL1")
+k = data_transposed %>%
+  select("time", "RIL77", "RIL14", "RIL2", "RIL8", "RIL73", "RIL85")
+n = data_transposed %>%
+  select("time", "RIL77", "RIL49", "RIL48", "RIL8", "RIL73", "RIL92")
+
+# Melt that junk
+x0_long = melt(x0, id.vars = "time")
+overallGrowthRate_long = melt(overallGrowthRate, id.vars = "time")
+k_long = melt(k, id.vars = "time")
+n_long = melt(n, id.vars = "time")
+
+write.csv(x0_long, "~/Desktop/2021-10-28_x0_long.csv")
+write.csv(overallGrowthRate_long, "~/Desktop/2021-10-28_overallGrowthRate_long.csv")
+write.csv(k_long, "~/Desktop/2021-10-28_k_long.csv")
+write.csv(n_long, "~/Desktop/2021-10-28_n_long.csv")
+
+x0_long = read_csv("~/Desktop/2021-10-28_x0_long.csv")
+overallGrowthRate_long = read_csv("~/Desktop/2021-10-28_overallGrowthRate_long.csv")
+k_long = read_csv("~/Desktop/2021-10-28_k_long.csv")
+n_long = read_csv("~/Desktop/2021-10-28_n_long.csv")
+
+# Plot that junk
+x0_plot = ggplot(x0_long, aes(x = time)) +
+  geom_line(aes(y = value, color = trait)) + 
+  ggtitle("Parameter x0") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+overallGrowthRate_plot = ggplot(overallGrowthRate_long, aes(x = time)) +
+  geom_line(aes(y = value, color = trait)) + 
+  ggtitle("Overall Growth Rate") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+k_plot = ggplot(k_long, aes(x = time)) +
+  geom_line(aes(y = value, color = trait)) + 
+  ggtitle("Parameter k") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+n_plot = ggplot(n_long, aes(x = time)) +
+  geom_line(aes(y = value, color = trait)) + 
+  ggtitle("Parameter n") +
+  xlab("Time (hr)") +
+  ylab("Tip Angles (degrees)") +
+  theme_bw()
+
+grid.arrange(x0_plot, 
+             overallGrowthRate_plot, 
+             k_plot, 
+             n_plot, 
+             ncol = 2, nrow = 2)
+```
+
+```{r comparing-growthrates-of-RIL1-RIL2-Kine-OverallGrowthRate}
+# Laod in growth rate data from RIL1 & RIL2 datasets from Moore's work
+grRIL1_2 = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-08_CandaceRIL1-2_growthRates.csv") 
+
+grKineTrait = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")   %>%
+  select(overallGrowthRate) #%>%
+  # colnames("Kinematic Growth Rate")
+
+# Combine all of these datasets
+growthRates = cbind(grRIL1_2, grKineTrait)
+
+# Now plot the Kinematic growth rate against the gravi growth rate
+ggplot(growthRates, aes(x = growthRates$RIL1_GrowthRate)) +
+  geom_point(aes(y = growthRates$RIL2_GrowthRate)) +
+  xlab("RIL1 Growth Rate") +
+  ylab("RIL2 Growth Rate") +
+  # stat_summary(fun.data = growthRates$RIL2_GrowthRate) + # creates "line of best fit" via linear reg
+  # geom_smooth(method='lm') +
+  theme_bw()
+
+```
+
+
+
 
 
 

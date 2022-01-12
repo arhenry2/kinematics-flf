@@ -46,19 +46,18 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
 
   
   summary(out)
-  
+  nperm = 10000
 # Permutation testing
   operm <- scan1perm(pr[,1:5], CT$pheno[,c(1:4)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
-                   model = "normal", n_perm = 10000, perm_Xsp = FALSE, # changed n_perm=10000 from 1000 (5.9.2021)
+                   model = "normal", n_perm = nperm, perm_Xsp = FALSE, # changed n_perm=10000 from 1000 (5.9.2021)
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
 
   # sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold, 95% & 99%  
   sig <- summary(operm, alpha = c(0.05)) # Significant threshold, just 95%
-# ymx <- maxlod(out) # max lod score
 
 ##### Finding LOD peaks
-# 
+
   peaks <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
   # peaks_fullDataset <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
   # peaks_noMatZone <- find_peaks(out, map, threshold = sig[1,1], drop = 1.5)
@@ -70,17 +69,18 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
   ## Saw this on Broman's website: https://kbroman.org/qtl2/assets/vignettes/user_guide.html#Finding_LOD_peaks,
   ### He says to use this with caution... BUT WHY?? WHAT IS BAYES?! WHAT IS PEAKDROP?!
   # Please Note: you have to change lodcolumn & chr manually to find the right peaks
-  lod_int(out, map, lodcolumn=4, chr=4, peakdrop=1.8, drop=1.5) #also works on lodcolumn=2 (vf)
+  lod_int(out, map, lodcolumn = 4, chr = 4, peakdrop = 1.8, drop = 1.5) # Also works on lodcolumn = 2 (vf)
 
   ## Use this if want to normalize traits to have same threshold at 1! (added 4-19-2021)
   # for loop to divide each trait's data by that trait's sig value at 95%
+  # Note: ONLY DO THIS ONCE! or it'll keep changing 'out'
   # for (i in 1:dim(out[,])[2]){
   #   out[,i] = out[,i]/sig[,i]
   # }
   
 ##### QTL Mapping Plots:
   ymx <- maxlod(out)
-  plot(out, map, lodcolumn = 1, ylim=c(0, ymx*1.02), col = rgb(0, 0, 0, 0.5), main = "") # x0 = black
+  plot(out, map, lodcolumn = 1, ylim=c(0, ymx*1.02), col = rgb(0, 0, 0, 0.5), main = "") # black
   plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # red
   plot(out, map, lodcolumn = 3, col = rgb(1, 0.4, 0, 0.5), add = TRUE) # orange
   plot(out, map, lodcolumn = 4, col = rgb(0, 0.6, 1, 0.5), add = TRUE) # light blue
@@ -91,23 +91,23 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
 
   # MAKE ABLINE AT 1 AS THRESHOLD FOR ALL! (AFTER YOU NORMALIZE DATA BY SIG VALUES!) #added 4-19-2021
   # abline(h = 1, col = rgb(0, 0, 0, 0.5), lty = 1)
-  abline(h = sig[,1], col = rgb(0, 0, 0, 0.5), lty=2) # black
-  abline(h = sig[,2], col = rgb(1, 0, 0, 0.5), lty=2) # red
-  abline(h = sig[,3], col = rgb(1, 0.4, 0, 0.5), lty=2) # orange
-  abline(h = sig[,4], col = rgb(0, 0.6, 1, 0.5), lty=2) # light blue
-  # abline(h = sig[,5], col = rgb(0, 1, 0, 0.5), lty=2) # green
-  # abline(h = sig[,6], col = rgb(0, 0, 0.8, 0.5), lty=2) # dark blue
-  # abline(h = sig[,7], col = rgb(0.4, 0, 0.6, 0.5), lty=2) # violet
-  # abline(h = sig[,8], col = rgb(0, 0, 0, 0.1), lty=2) # grey
-  legend("topright", 
-         lwd = 3, 
+  abline(h = sig[,1], col = rgb(0, 0, 0, 0.5), lty = 2) # black
+  abline(h = sig[,2], col = rgb(1, 0, 0, 0.5), lty = 2) # red
+  abline(h = sig[,3], col = rgb(1, 0.4, 0, 0.5), lty = 2) # orange
+  abline(h = sig[,4], col = rgb(0, 0.6, 1, 0.5), lty = 2) # light blue
+  # abline(h = sig[,5], col = rgb(0, 1, 0, 0.5), lty = 2) # green
+  # abline(h = sig[,6], col = rgb(0, 0, 0.8, 0.5), lty = 2) # dark blue
+  # abline(h = sig[,7], col = rgb(0.4, 0, 0.6, 0.5), lty = 2) # violet
+  # abline(h = sig[,8], col = rgb(0, 0, 0, 0.1), lty = 2) # grey
+  legend("topright",
+         lwd = 3,
          col = c(rgb(0, 0, 0, 0.5), # black
                  rgb(1, 0, 0, 0.5), # red
                  rgb(1, 0.4, 0, 0.5), # orange
                  rgb(0, 0.6, 1, 0.5)), # light blue
                  # rgb(0, 1, 0, 0.5), # green
                  # rgb(0, 0, 0.8, 0.5), # dark blue
-                 # rgb(0.4, 0, 0.6, 0.5)), # violet
+                 # # rgb(0.4, 0, 0.6, 0.5), # violet
                  # rgb(0, 0, 0, 0.3)), # grey
          colnames(out), bty = "n")
 
@@ -130,17 +130,17 @@ dev.off()
 ################################# Allele Effect at Specified Marker #################################
 ############################################ 2020-10-20 #############################################
 # Finds if there are multiple peaks on one chr for each phenotype
-# lod columns: 1:Vmax, 2:vf, 3:positionVmax, 4:growthZoneWidth
+# lod columns: 1:maxREGR, 2:vf, 3:positionMaxREGR, 4:growthZoneWidth
 # This is a matrix, how can I add chr & phenotype to this & add to 'peaks' dataframe?
 ## Added this^ manually to peak data: 2021-05-09_peaks.xlsx
-lod_int(out, map, lodcolumn = 4, chr = 1, peakdrop = 1.8, drop = 1.5)
+lod_int(out, map, lodcolumn = 3, chr = 1, peakdrop = 1.8, drop = 1.5)
 
 # maxmarg() grabs allele data by RIL at a specific marker location (given chromosome & position)
-g <- maxmarg(pr, map, chr = 5, pos = 76.680571, return_char = TRUE, minprob = 0)
+g <- maxmarg(pr, map, chr = 5, pos = 28.45, return_char = TRUE, minprob = 0)
 # Plots the phenotypes and genotype at a marker location
 ## bgcolor = 0 changes background color to white
-plot_pxg(g, CT$pheno[,"vf"], ylab = "vf", SEmult = 2, bgcolor = 0) + # add bgcolor = 0 if you want a b/w background
-  title(main = "Allele Effect for vf on Chr 5, Pos 76.680571") # Change manually so that pos & chr match above
+plot_pxg(g, CT$pheno[,"posMaxREGR"], ylab = "Position of Max REGR", SEmult = 2, bgcolor = 0) + # add bgcolor = 0 if you want a b/w background
+  title(main = "Chr 5, Pos 28.45 cM") # Change manually so that pos & chr match above
   
 
 #####################################################################################################
@@ -280,3 +280,4 @@ for(i in seq(along=last_coef))
   plot(out1, CT$gmap, ylim=c(0,7),main=setname)
   abline(h=sig, col="red")
   dev.off()
+  

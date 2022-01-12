@@ -27,12 +27,13 @@ library(neldermead)
 ```{r gather-materials}
 # Test with sample dataset:
 # masterPath <- "~/Desktop/RILPop_tmp/"
-masterPath <- "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_RawData"
+masterPath <- "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_RawData_KnownAlleles/"
 
 res <- processMasterFolder(masterPath, 10)
 
 # Load in full RIL set
-load("~/rildata/rildata_realfullDataset/2020_12_07_res_RILPop_full.RData")
+# load("~/rildata/rildata_realfullDataset/2020_12_07_res_RILPop_full.RData")
+load("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-11-22_res_auxinMutants.RData")
 ```
 
 ```{r function-to-calc-REGRCurve-descriptors}
@@ -69,7 +70,8 @@ functionName = function(fileName, posVel, posREGR){
     # print(vf)
 
  # Calculate position of maxREGR
-    positionMaxREGR = which(fittedREGR == maxREGR)
+    positionMaxREGR_index = which(fittedREGR == maxREGR)
+    positionMaxREGR = pos[positionMaxREGR_index]
     # print(positionMaxREGR)
   
  # Calculate width of growth zone
@@ -144,10 +146,11 @@ for (i in 1:length(res)){
   for(j in 1:length(res[[i]]$rawData)){
     rawData <- as.data.frame(res[[i]]$rawData[[j]]) 
     fileName = rawData$fileName[j]
-    fileName = str_split(fileName, '/', simplify = TRUE)[,8]
+    fileName = str_split(fileName, '/', simplify = TRUE)[,9]
     print(fileName)
 
-    pos = c(1:2500) # originally at 3000, but too many points
+    # pos = c(1:2500) # originally at 3000, but too many points
+    pos = c(0:3000) # tried this on 2021-11-22 to see if my data can match Nathan's
     
     # Get velocity fits for example data
     fittedVel = flf(pos,
@@ -192,7 +195,9 @@ for (i in 1:length(res)){
 # Woot! growthCurveDescriptors is complete (minus symmetry, but want to make QTL map & compare to parameters)
 ## Saving my hard work:
 # save(growthCurveDescriptors, file = "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors.csv")
-save(growthCurveDescriptors, file = "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021-10-07_growthCurveDescriptors.csv")
+# write_csv(growthCurveDescriptors, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_pos-to-3000.csv")
+
+write_csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-12-06_growthCurveDescriptors.csv")
 ```
 
 ```{r clean-up-data}
@@ -209,41 +214,44 @@ growthCurveDescriptors$RILs <- str_extract(growthCurveDescriptors$RILs, "[A-Z]+[
 growthCurveDescriptors$RILs = str_extract(growthCurveDescriptors$RILs, "[0-9]+")
 
 
+# Now for Auxin Transport Mutants
+growthCurveDescriptors$mutants <- growthCurveDescriptors$filename
+growthCurveDescriptors$mutants <- str_split(growthCurveDescriptors$mutants, '_', simplify = TRUE)[,1] #only takes name before underscore
+
 ## I need to remove the roots without a maturation zone (56 outliers)
 ## Note: Use code from RILSetAnalysisScript.Rmd (~line 363)
-# growthCurveDescriptors = growthCurveDescriptors %>%
-#   filter(percentMatZone > 0.0)
+growthCurveDescriptors = growthCurveDescriptors %>%
+  filter(percentMatZone > 0.9)
+
 # Write data to csv
-write.csv(growthCurveDescriptors, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
-
-
-### Added 2021-10-07:
-# Same, but for Auxin Transport Mutants now
-growthCurveDescriptors$mutants <- growthCurveDescriptors$filename
-growthCurveDescriptors$mutants = str_extract(growthCurveDescriptors$mutants, "[A-Z]*[a-z]*[0-9]*")
-write.csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_10_07_growthCurveDescriptors.csv")
+# write.csv(growthCurveDescriptors, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
+write.csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_growthCurveDescriptors-wAlleles.csv")
 ```
 
 ```{r distributions-of-growth-curve-descriptors}
 # data = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
-data = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_10_07_growthCurveDescriptors.csv")
+data = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_growthCurveDescriptors-wAlleles.csv")
 
 # Density plots to see distribution of each REGR curve descriptor:
 ## maxREGR: very Normally distributed!
-ggplot(data, aes(maxREGR)) +
+maxREGR = ggplot(data, aes(maxREGR)) +
   geom_density()
 
 ## vf: mostly normal, skewed right
-ggplot(data, aes(vf)) +
+vf = ggplot(data, aes(vf)) +
   geom_density()
 
 ## positionMaxREGR: very Normally distributed!
-ggplot(data, aes(positionMaxREGR)) +
+posMaxREGR = ggplot(data, aes(positionMaxREGR)) +
   geom_density()
 
 ## growthZoneWidth: mostly normal, skewed right
-ggplot(data, aes(growthZoneWidth)) +
+growthZoneWidth = ggplot(data, aes(growthZoneWidth)) +
   geom_density()
+
+# Plot all density plots on one page
+descriptorDensityPlots_mutants = grid.arrange(maxREGR, vf, posMaxREGR, growthZoneWidth, 
+             ncol = 2, nrow = 2)
 
 # ## percentMatZone: vaguely Normal b/c of dropoff at 0% mat zone, slightly skewed right
 # ggplot(data, aes(percentMatZone)) +
@@ -261,7 +269,7 @@ shapiro.test(data$growthZoneWidth) # W = 0.99086, p-value = 0.9689 -> doesn't pa
 ```
 
 ```{r ttests-for-descriptors}
-AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData/2021_10_07_growthCurveDescriptors.csv")
+AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_growthCurveDescriptors-wAlleles.csv")
 
 # abcb19
 abcb19 = AllRILs_SummaryParameters %>%
@@ -273,16 +281,53 @@ abcb4 = AllRILs_SummaryParameters %>%
   filter(AllRILs_SummaryParameters$mutants == "b4")
 ## pin2
 pin2 = AllRILs_SummaryParameters %>%
-  select(-X) %>%
+  # select(-X) %>%
   filter(AllRILs_SummaryParameters$mutants == "pin2")
 ## Col-0 (WT)
-Col = AllRILs_SummaryParameters %>%
-  select(-X) %>%
-  filter(AllRILs_SummaryParameters$mutants == "Col")
+Col_0 = AllRILs_SummaryParameters %>%
+  # select(-X) %>%
+  filter(AllRILs_SummaryParameters$mutants == "Col-0")
+
+mutant1 = Col_0
+mutant2 = pin2
+
+# Make empty dataframe for results of t-tests
+## Want it to capture the mutants, parameters, kinematic traits, p-values, & means of 2 mutants' traits
+tmpName = data.frame(mutant1 = character(),
+                     mutant2 = character(),
+                     parameter_trait = character(),
+                     p_value = integer(),
+                     mutant1_mean = integer(),
+                     mutant2_mean = integer()
+                     )
+
+ttest_maxREGR <- function(mutant1, mutant2){
+  maxREGR_ttest = t.test(mutant1$maxREGR, mutant2$maxREGR, var.equal = FALSE)
+  vf_ttest = t.test(mutant1$vf, mutant2$vf, var.equal = FALSE)
+  positionMaxREGR_ttest = t.test(mutant1$positionMaxREGR, mutant2$positionMaxREGR, var.equal = FALSE)
+  growthZoneWidth_ttest = t.test(mutant1$growthZoneWidth, mutant2$growthZoneWidth, var.equal = FALSE)
+  return(maxREGR_ttest)
+}
+
+ttest_vf <- function(mutant1, mutant2){
+  vf_ttest = t.test(mutant1$vf, mutant2$vf, var.equal = FALSE)
+  return(vf_ttest)
+}
+ttest_positionMaxREGR <- function(mutant1, mutant2){
+  positionMaxREGR_ttest = t.test(mutant1$positionMaxREGR, mutant2$positionMaxREGR, var.equal = FALSE)
+  return(positionMaxREGR_ttest)
+}
+ttest_growthZoneWidth <- function(mutant1, mutant2){
+  growthZoneWidth_ttest = t.test(mutant1$growthZoneWidth, mutant2$growthZoneWidth, var.equal = FALSE)
+  return(c(growthZoneWidth_ttest$p.value, growthZoneWidth_ttest$estimate)) # doesn't return both...
+}
+
+result = ttest_growthZoneWidth(Col_0, pin2)
+result$p.value
 
 # t-tests for maxREGR descripter
 qqplot(abcb19$maxREGR, runif(1000)) # will run for Col, pin2, abcb4, & abcb19
-maxREGR_Col_pin2 = t.test(Col$maxREGR, pin2$maxREGR, var.equal = FALSE) # p-value = 5.323e-06
+maxREGR_Col_pin2 = t.test(Col_0$maxREGR, pin2$maxREGR, var.equal = FALSE) # p-value = 5.323e-06
 maxREGR_Col_abcb4 = t.test(Col$maxREGR, abcb4$maxREGR, var.equal = FALSE) # p-value = 5.415e-11
 maxREGR_Col_abcb19 = t.test(Col$maxREGR, abcb19$maxREGR, var.equal = FALSE) # p-value = 0.1253
 
@@ -331,7 +376,8 @@ var() # variance of that REGR Curve's descriptor
 tally() # No. of samples for each RIL
 
 # Load in dataframe from csv file
-growthCurveDescriptors = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
+# growthCurveDescriptors = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
+growthCurveDescriptors = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors.csv")
 
 # Use summarise_each and funs() to calculate stats for all parameters
 ## Group by RIL to group together & get stats for each RIL (not taking stat of whole pop)
@@ -339,7 +385,7 @@ growthCurveDescriptors = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_
 ## Calc'd chosen stat via summarise_each(funs())
 growthCurveDescriptors_Averaged = growthCurveDescriptors %>%
   group_by(RILs) %>%
-  select(-X, -filename) %>%
+  # select(-X, -filename) %>%
   summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
 
 growthCurveDescriptors_Median = growthCurveDescriptors %>%
@@ -365,6 +411,7 @@ growthCurveDescriptors_nSamples = growthCurveDescriptors %>%
 
 # Save all work from above into csv files
 write.csv(growthCurveDescriptors_Averaged, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_Averaged-removedLittleMatZoneRoots.csv")
+# write.csv(growthCurveDescriptors_Averaged, "~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_11_22_growthCurveDescriptors_Averaged-rpos-to-3000.csv")
 write.csv(growthCurveDescriptors_Median, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_Median-removedLittleMatZoneRoots.csv")
 write.csv(growthCurveDescriptors_StDev, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_StDev-removedLittleMatZoneRoots.csv")
 write.csv(growthCurveDescriptors_Variance, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_Variance-removedLittleMatZoneRoots.csv")
@@ -376,7 +423,7 @@ write.csv(growthCurveDescriptors_nSamples, "~/rildata/rildata_fullDataset/2021_0
 ```{r oh-Lord-its-R-the-sequel}
 growthCurveDescriptors = read.csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_02_08_growthCurveDescriptors_Averaged-removedNoMatZoneRoots-nopercentMatZone.csv")
 
-# Plot positionMaxREGRvs growthZoneWidth to see if they're two separate variables
+# Plot positionMaxREGR vs growthZoneWidth to see if they're two separate variables
 ## Answer: directly correlated, they're the same variable... dammit
 ggplot(data = growthCurveDescriptors, aes(x = growthZoneWidth)) +
   geom_point(aes(y = positionMaxREGR)) +

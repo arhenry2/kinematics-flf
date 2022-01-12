@@ -1,0 +1,284 @@
+---
+title: "MultivariateCoefficientOptimizer_Gravi-v-KineTraits"
+author: "Ashley Henry, Nathan Miller"
+date: "11/17/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(pracma)
+library(data.table)
+library(qtl2)
+```
+
+```{r metric-function}
+
+metric <- function(mappedList1, mappedList2){
+  # Does correlation
+  correlation = cor(mappedList1, mappedList2, use = "complete.obs")
+  return(correlation)
+}
+
+# Try this out:
+mappedList1 = runif(10)
+mappedList2 = runif(10)
+metric(mappedList1, mappedList2)
+```
+
+```{r predictor-function}
+
+predictor <- function(M, v){
+  v = v / norm(as.matrix(v))
+  predicted = M%*%v
+  return(predicted)
+}
+
+# Try this out:
+pmat = matrix(c(1:4), ncol = 4, nrow = 162)
+pvec = c(1, 1, 1, 1)
+ppre = predictor(pmat, pvec)
+
+smat = matrix(c(1:2), ncol = 2, nrow = 162)
+svec = c(1, 1)
+spre = predictor(smat, svec)
+```
+
+```{r QTLMapping-function}
+# Ash Note: This works for CT being there, but we need to redo this so that we enter in our own phenotype data
+## That way we don't have to load it into the .json file
+## So, make a genotype file with the marker data (& location...?)
+
+mapper <- function(data_in_csv, ct){
+  # Inserted pieces of QTLCode.R (see QTLCode.R for annotations!)
+  # Have it return peaks from 0 permutations to test
+  
+  g1 <- do.call("cbind", ct$geno) 
+  map <- insert_pseudomarkers(ct$gmap, step = 2.5, stepwidth = "max")
+  pr <- calc_genoprob(ct, map, error_prob = 0.002)
+  m1 <- maxmarg(pr)
+  xo1 <- count_xo(m1) 
+  k_loco <- calc_kinship(pr, "loco") 
+  x = dim(ct$pheno)[2]
+  out <- scan1(pr, ct$pheno[,c(1:x)], k_loco, cores = 4)
+  # print(out)
+  nperm = 10 # changed n_perm = 10000 from 1000 (5.9.2021)
+  operm <- scan1perm(pr[,1:5], ct$pheno[,c(1:x)], k_loco[1:5], addcovar = NULL,
+                   Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
+                   model = "normal", n_perm = nperm, perm_Xsp = FALSE,
+                   perm_strata = NULL, chr_lengths = NULL, cores = 4)
+
+  sig <- summary(operm, alpha = c(0.05)) # Need this? 
+  return(out)
+}
+
+## Try this out & plot LOD scores:
+# setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
+# CT <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
+# CT
+# CT$pheno <- tipAngle # change phenotype data for mapper()
+# map = mapper(pheno, CT)
+# x_axis = c(1:340)
+# plot(x_axis, map[,1]) # plot 1st column of LOD scores by marker
+
+```
+
+```{r qtl-function-no-CT-loading_IN-PROGRESS}
+#######################################################
+##### Testing qtl function so can use without CT ######
+# Gave up on this 2021-11-29 b/c above function works #
+#######################################################
+
+CT <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
+geno <- read_csv2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/ALFP_geno.csv")
+gmap <- read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/ALFP_gmap.csv")
+pmap <- read_csv2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/ALFP_geno.csv")
+# pheno = "phenotypes by RIL" #(2021_11_22_growthCurveDescriptors_Averaged-pos-to-3000.csv)
+pheno1 <- runif(162)
+pheno2 <- runif(162)
+RIL <- c(1:162)
+pheno <- matrix(data = cbind(RIL, pheno2), nrow = 162, ncol = 2) # phenotype (try 1st w/ a random set of numbers & get no peaks)
+# If matrix() ->
+# Note:
+##  "alleles": ["L", "C"], "genotypes": {"L": 1, "C": 2}
+
+mapperTMP <- function(gmap, genomap, pheno, CT){
+  # Inserted pieces of QTLCode.R (see QTLCode.R for annotations!)
+  # Have it return peaks from 0 permutations
+
+  g1 <- do.call("cbind", geno)
+  map <- insert_pseudomarkers(CT$gmap, step = 2.5, stepwidth = "max")
+  pr <- calc_genoprob(CT, map, error_prob = 0.002)
+  m1 <- maxmarg(pr)
+  xo1 <- count_xo(m1)
+  k_loco <- calc_kinship(pr, "loco")
+  out <- scan1(pr, pheno, k_loco, cores = 4)
+  print(out)
+  nperm = 1 # changed n_perm = 10000 from 1000 (5.9.2021)
+  operm <- scan1perm(pr[,1:5], pheno[,c(1)], k_loco[1:5], addcovar = NULL,
+                   Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
+                   model = "normal", n_perm = nperm, perm_Xsp = FALSE,
+                   perm_strata = NULL, chr_lengths = NULL, cores = 4)
+
+  sig <- summary(operm, alpha = c(0.05)) # Need this?
+  return(out)
+}
+
+map = mapperTMP(gmap, genomap, pheno, CT)
+x = c(1:340)
+plot(x,map)
+```
+
+```{r putting-it-all-together}
+REGR = read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+REGR = data.matrix(REGR)
+tipAngle = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_tipAngle_PCScores.csv")
+tipAngle = data.matrix(tipAngle)
+# alpha = c(1)
+
+# Overall goal is to calculate the sum of correlations below: 
+## Note: Test alpha as c(1,1,1,1) (check by summing row 1); test alpha with c(0.25, 0.25, 0.25, 0.25) (check by taking average of row 1)
+# metric(predictor(REGR,c(0.25,0.25,0.25,0.25)), predictor(tipAngle, beta)) + metric(mapper(G,predictor(REGR, alpha)), mapper(G,predictor(tipAngle, beta)))
+
+# T1 for predicting and calculating correlation
+T1 <- function(s){
+  alpha = s[1:4]
+  beta = s[5:6] # specify this as "end of s" later
+  A = metric(predictor(REGR, alpha), predictor(tipAngle, beta))
+  A = as.vector(A)
+}
+
+T1(c(1,1,1,1,2,2)) # need 6 because we have 6 total phenotypes (4 kine traits + 2 PC scores of gravi data)
+xSol1 = fminsearch(T1, runif(6), minimize = FALSE, maxiter = 10000) # with min = FALSE, it searches for maximum
+
+# T2 for mapping and calculating correlation
+setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
+CT <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
+CT
+
+T2 <- function(p){
+  alpha = p[1:4]
+  beta  = p[5:6] # specify this as "end of p" later
+  
+  # Below is original when had mappers together & didn't include both phenotypes  
+  # B = metric(mapper(G,predictor(REGR, alpha)), mapper(G,predictor(tipAngle, beta)))
+
+  # Load regr and tip angles
+  ct   <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
+  regr <- read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+  tagl <- read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_tipAngle_PCScores.csv")
+  regr = data.matrix(regr)
+  tagl = data.matrix(tagl)
+
+  
+  Z = metric(predictor(REGR, alpha), predictor(tipAngle, beta))
+  Z = as.vector(Z)
+  
+  # Phenotype = REGR for 1st mapper
+  ct$pheno <- regr
+  A = mapper(predictor(regr, alpha), ct)
+  
+  # Phenotype = tipAngle for 2nd mapper
+  ct$pheno <- tagl
+  B = mapper(predictor(tagl, beta), ct)
+  C = metric(A, B)
+  C = as.vector(C)
+  D = C + Z
+  print(D)
+}
+
+xSol2 = fminsearch(T2, runif(6), minimize = FALSE, maxiter = 100)
+pp    = xSol2$xmin
+optA  = pp[1:4]
+optB  = pp[5:6]
+
+optAA  = predictor(REGR, optA)
+optBB  = predictor(tipAngle, optB)
+
+plot(optAA, optBB)
+data = data.frame(cbind(optAA, optBB))
+ggplot(data, aes(optAA)) +
+  geom_point(aes(y=optBB), colour = "blue")
+
+optCC = mapper(predictor(REGR, optA), CT)
+optDD = mapper(predictor(tipAngle, optB), CT)
+
+x_axis = c(1:340)
+plot(x_axis, optCC[,1]) # plot 1st column of LOD scores by marker
+
+data2 = data.frame(cbind(x_axis, optCC[,1], optDD[,1]))
+ggplot(data2, aes(x_axis)) + 
+  # geom_point(aes(y = optCC[,1]), colour = "red") +
+  geom_point(aes(y = optDD[,1]), colour = "blue")
+
+
+
+# Test through a single iteration with random inputs
+p  = runif(6)
+aa = p[1:4]
+bb = p[5:6]
+AA = predictor(REGR, aa)
+BB = predictor(tipAngle, bb)
+
+##
+plot(AA,BB)
+plot(optAA,optBB)
+
+```
+
+``` {r babadook}
+##
+CT$pheno <- REGR
+AA  = predictor(REGR, aa)
+pAA = mapper(AA, CT)
+  
+# Phenotype = tipAngle for 2nd mapper
+CT$pheno <- tipAngle
+BB  = predictor(tipAngle, bb)
+pBB = mapper(BB, CT)
+
+CC = metric(pAA, pBB)
+pCC = as.vector(CC)
+
+#
+CT$pheno <- REGR
+
+### Show optimized results
+# Output
+
+
+
+### TO DO LIST | Made 2021-11-30 ###
+## Need to save 2 different LOD score datasets!!!
+# need loop to have it start at 100 random start values & pick the best solution
+## Why is the convergence 0? 
+## Check out output to understand it (tolerance, maxiter, max etc.)
+
+
+
+
+## After chatting briefly with Nathan on 20 December 2021, this is my next step:
+# Use predictor to get "new" values for kine traits (new alphas) & "new" values for PC of tipAngles (new betas)
+# Scatterplot these new values & compare to scatterplots of original kine traits & PCs
+
+```
+
+```{r testing-using-CCA}
+# Can test if fminsearch went well by finding the true values of alpha and beta using Canonical Correlation Analysis
+## Helpful site: https://stats.idre.ucla.edu/r/dae/canonical-correlation-analysis/
+
+CCA = cc()
+
+```
+
+
+
+
+
