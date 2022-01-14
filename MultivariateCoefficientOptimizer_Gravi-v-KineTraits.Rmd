@@ -69,7 +69,7 @@ mapper <- function(data_in_csv, ct){
   x = dim(ct$pheno)[2]
   out <- scan1(pr, ct$pheno[,c(1:x)], k_loco, cores = 4)
   # print(out)
-  nperm = 10 # changed n_perm = 10000 from 1000 (5.9.2021)
+  nperm = 1000 # changed n_perm = 10000 from 1000 (5.9.2021)
   operm <- scan1perm(pr[,1:5], ct$pheno[,c(1:x)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = nperm, perm_Xsp = FALSE,
@@ -232,16 +232,46 @@ ggplot(data2, aes(x_axis)) +
 ```
 
 ``` {r actually-putting-it-together}
+
 # T3 combines the 2 datasets below to see which "recipe" gives the best correlation between these:
-## Raw REGR & tipAngle data
-## LOD scores of mapped, raw REGR & tipAngle data
+## raw REGR & tipAngle PC scores data
 T3 <- function(s){
-  
-  alpha = s[1:4]
-  beta = s[5:6] # specify this as "end of s" later
-  
   H = metric(REGR, tipAngle)
   H = as.vector(H)
+  
+}
+
+recipe_T3 = fminsearch(T3, runif(7), minimize = FALSE, maxiter = 100)
+pp = recipe_T3$xmin
+optJ = pp[1:4]
+optK  = pp[5:7]
+
+# Transform REGR & tipAngle data by the "recipe" from fminsearch()
+optJJ  = predictor(REGR, optJ)
+optKK  = predictor(tipAngle, optK)
+
+# Plotting new REGR & tipAngle data to visualize correlation
+data = data.frame(cbind(optJJ, optKK))
+ggplot(data, aes(x = optJJ, y = optKK)) +
+  geom_point(aes(y = optKK), colour = "blue") +
+  xlab("REGR Trait Data") +
+  ylab("Tip Angle PC Scores Data") +
+  ggtitle("Transformed Tip Angle PCs and REGR Traits Data") +
+  stat_summary(fun.data = mean_cl_normal) + 
+  geom_smooth(method = 'lm') +
+  theme_bw()
+
+metric(optJJ, optKK) # -0.04825338
+metric(REGR[,1], tipAngle[,1]) # 0.2065649
+metric(REGR[,4], tipAngle[,1]) # 0.2065649
+
+
+# T4 combines the 2 datasets below to see which "recipe" gives the best correlation between these:
+## LOD scores of mapped, raw REGR & tipAngle PC scores data
+T4 <- function(s){
+  # 
+  # alpha = s[1:4]
+  # beta = s[5:7] # specify this as "end of s" later
   
   # csv files for mapper() & in matrix format
   CT   <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
@@ -262,37 +292,45 @@ T3 <- function(s){
   L = metric(J, K)
   L = as.vector(L)
   
-  # Add correlations
-  P = H + L
-  print(P)
+  # # Add correlations
+  # P = H + L
+  # print(P)
 }
 
-recipe = fminsearch(T3, runif(6), minimize = FALSE, maxiter = 100)
-pp = recipe$xmin
-optJ = pp[1:4]
-optK  = pp[5:6]
+recipe_T4 = fminsearch(T4, runif(7), minimize = FALSE, maxiter = 100)
+pp = recipe_T4$xmin
+optA = pp[1:4]
+optB  = pp[5:7]
 
+# Transform REGR & tipAngle data by the "recipe" from fminsearch()
+CT <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
+CT$pheno <- REGR
+optAA  = mapper(predictor(REGR, optA), CT)
+CT$pheno <- tipAngle
+optBB  = mapper(predictor(tipAngle, optB), CT)
 
-optAA  = predictor(REGR, optA)
-optBB  = predictor(tipAngle, optB)
-
-plot(optAA, optBB)
-data = data.frame(cbind(optAA, optBB))
-ggplot(data, aes(optAA)) +
-  geom_point(aes(y=optBB), colour = "blue")
-
-optCC = mapper(predictor(REGR, optA), CT)
-optDD = mapper(predictor(tipAngle, optB), CT)
-
+# Plot new LOD scores
 x_axis = c(1:340)
-plot(x_axis, optCC[,1]) # plot 1st column of LOD scores by marker
+row.names(optAA) <- c(1:340)
+row.names(optBB) <- x_axis
+data_T4 = data.frame(cbind(optAA, optBB))
 
-data2 = data.frame(cbind(x_axis, optCC[,1], optDD[,1]))
-ggplot(data2, aes(x_axis)) + 
-  # geom_point(aes(y = optCC[,1]), colour = "red") +
-  geom_point(aes(y = optDD[,1]), colour = "blue")
+ggplot(data_T4, aes(x = x_axis)) +
+  geom_line(aes(y = maxREGR), colour = "blue") +
+  geom_line(aes(y = posMaxREGR), colour = "cyan") +
+  geom_line(aes(y = overallGrowthRate), colour = "cornflowerblue") +
+  geom_line(aes(y = growthZoneWidth), colour = "aquamarine3") +
+  
+  geom_line(aes(y = RIL1.TipAngle_PC1), colour = "red") +
+  geom_line(aes(y = RIL1.TipAngle_PC2), colour = "brown1") +
+  geom_line(aes(y = RIL1.TipAngle_PC3), colour = "darkred") +
 
+  # ADD A LINE SO WE KNOW WHAT'S SIGNIFICANT!!!
 
+  xlab("Marker Locations along Genome") +
+  ylab("LOD Score") +
+  ggtitle("Transformed LOD Scores of Tip Angle PCs and REGR Traits Data") +
+  theme_bw()
 ```
 
 ```{r testing-using-CCA}
