@@ -28,9 +28,9 @@ metric <- function(mappedList1, mappedList2){
 }
 
 # Try this out:
-mappedList1 = runif(10)
-mappedList2 = runif(10)
-metric(mappedList1, mappedList2)
+# mappedList1 = runif(10)
+# mappedList2 = runif(10)
+# metric(mappedList1, mappedList2)
 ```
 
 ```{r predictor-function}
@@ -42,13 +42,13 @@ predictor <- function(M, v){
 }
 
 # Try this out:
-pmat = matrix(c(1:4), ncol = 4, nrow = 162)
-pvec = c(1, 1, 1, 1)
-ppre = predictor(pmat, pvec)
-
-smat = matrix(c(1:2), ncol = 2, nrow = 162)
-svec = c(1, 1)
-spre = predictor(smat, svec)
+# pmat = matrix(c(1:4), ncol = 4, nrow = 162)
+# pvec = c(1, 1, 1, 1)
+# ppre = predictor(pmat, pvec)
+# 
+# smat = matrix(c(1:2), ncol = 2, nrow = 162)
+# svec = c(1, 1)
+# spre = predictor(smat, svec)
 ```
 
 ```{r QTLMapping-function}
@@ -141,7 +141,6 @@ REGR = read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_04_18_growthCur
 REGR = data.matrix(REGR)
 tipAngle = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_tipAngle_PCScores.csv")
 tipAngle = data.matrix(tipAngle)
-# alpha = c(1)
 
 # Overall goal is to calculate the sum of correlations below: 
 ## Note: Test alpha as c(1,1,1,1) (check by summing row 1); test alpha with c(0.25, 0.25, 0.25, 0.25) (check by taking average of row 1)
@@ -156,7 +155,7 @@ T1 <- function(s){
 }
 
 T1(c(1,1,1,1,2,2)) # need 6 because we have 6 total phenotypes (4 kine traits + 2 PC scores of gravi data)
-xSol1 = fminsearch(T1, runif(6), minimize = FALSE, maxiter = 10000) # with min = FALSE, it searches for maximum
+xSol1 = fminsearch(T1, runif(6), minimize = FALSE, maxiter = 100) # with min = FALSE, it searches for maximum
 
 # T2 for mapping and calculating correlation
 setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
@@ -218,55 +217,81 @@ ggplot(data2, aes(x_axis)) +
   # geom_point(aes(y = optCC[,1]), colour = "red") +
   geom_point(aes(y = optDD[,1]), colour = "blue")
 
-
-
-# Test through a single iteration with random inputs
-p  = runif(6)
-aa = p[1:4]
-bb = p[5:6]
-AA = predictor(REGR, aa)
-BB = predictor(tipAngle, bb)
-
-##
-plot(AA,BB)
-plot(optAA,optBB)
-
 ```
 
-``` {r babadook}
-##
-CT$pheno <- REGR
-AA  = predictor(REGR, aa)
-pAA = mapper(AA, CT)
-  
-# Phenotype = tipAngle for 2nd mapper
-CT$pheno <- tipAngle
-BB  = predictor(tipAngle, bb)
-pBB = mapper(BB, CT)
-
-CC = metric(pAA, pBB)
-pCC = as.vector(CC)
-
-#
-CT$pheno <- REGR
-
-### Show optimized results
-# Output
-
-
-
+```{r TO-DO-LIST}
 ### TO DO LIST | Made 2021-11-30 ###
 ## Need to save 2 different LOD score datasets!!!
 # need loop to have it start at 100 random start values & pick the best solution
 ## Why is the convergence 0? 
 ## Check out output to understand it (tolerance, maxiter, max etc.)
 
-
-
-
 ## After chatting briefly with Nathan on 20 December 2021, this is my next step:
 # Use predictor to get "new" values for kine traits (new alphas) & "new" values for PC of tipAngles (new betas)
 # Scatterplot these new values & compare to scatterplots of original kine traits & PCs
+```
+
+``` {r actually-putting-it-together}
+# T3 combines the 2 datasets below to see which "recipe" gives the best correlation between these:
+## Raw REGR & tipAngle data
+## LOD scores of mapped, raw REGR & tipAngle data
+T3 <- function(s){
+  
+  alpha = s[1:4]
+  beta = s[5:6] # specify this as "end of s" later
+  
+  H = metric(REGR, tipAngle)
+  H = as.vector(H)
+  
+  # csv files for mapper() & in matrix format
+  CT   <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
+  REGR <- read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+  tipAngle <- read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_tipAngle_PCScores.csv")
+  REGR = data.matrix(REGR)
+  tipAngle = data.matrix(tipAngle)
+  
+  # Phenotype = REGR for 1st mapper
+  CT$pheno <- REGR
+  J = mapper(REGR, CT)
+
+  # Phenotype = tipAngle for 2nd mapper
+  CT$pheno <- tipAngle
+  K = mapper(tipAngle, CT)
+  
+  # Find correlations between REGR & tipAngle LOD scores
+  L = metric(J, K)
+  L = as.vector(L)
+  
+  # Add correlations
+  P = H + L
+  print(P)
+}
+
+recipe = fminsearch(T3, runif(6), minimize = FALSE, maxiter = 100)
+pp = recipe$xmin
+optJ = pp[1:4]
+optK  = pp[5:6]
+
+
+optAA  = predictor(REGR, optA)
+optBB  = predictor(tipAngle, optB)
+
+plot(optAA, optBB)
+data = data.frame(cbind(optAA, optBB))
+ggplot(data, aes(optAA)) +
+  geom_point(aes(y=optBB), colour = "blue")
+
+optCC = mapper(predictor(REGR, optA), CT)
+optDD = mapper(predictor(tipAngle, optB), CT)
+
+x_axis = c(1:340)
+plot(x_axis, optCC[,1]) # plot 1st column of LOD scores by marker
+
+data2 = data.frame(cbind(x_axis, optCC[,1], optDD[,1]))
+ggplot(data2, aes(x_axis)) + 
+  # geom_point(aes(y = optCC[,1]), colour = "red") +
+  geom_point(aes(y = optDD[,1]), colour = "blue")
+
 
 ```
 
