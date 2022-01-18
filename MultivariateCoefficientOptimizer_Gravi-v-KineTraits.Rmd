@@ -164,7 +164,7 @@ CT
 
 T2 <- function(p){
   alpha = p[1:4]
-  beta  = p[5:6] # specify this as "end of p" later
+  beta  = p[5:7] # specify this as "end of p" later
   
   # Below is original when had mappers together & didn't include both phenotypes  
   # B = metric(mapper(G,predictor(REGR, alpha)), mapper(G,predictor(tipAngle, beta)))
@@ -196,7 +196,7 @@ T2 <- function(p){
 xSol2 = fminsearch(T2, runif(6), minimize = FALSE, maxiter = 100)
 pp    = xSol2$xmin
 optA  = pp[1:4]
-optB  = pp[5:6]
+optB  = pp[5:7]
 
 optAA  = predictor(REGR, optA)
 optBB  = predictor(tipAngle, optB)
@@ -231,36 +231,50 @@ ggplot(data2, aes(x_axis)) +
 # Scatterplot these new values & compare to scatterplots of original kine traits & PCs
 ```
 
-``` {r actually-putting-it-together}
-
+``` {r actually-putting-it-all-together}
 # T3 combines the 2 datasets below to see which "recipe" gives the best correlation between these:
 ## raw REGR & tipAngle PC scores data
+REGR = read_csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+REGR = data.matrix(REGR)
+tipAngle = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_tipAngle_PCScores.csv")
+tipAngle = data.matrix(tipAngle)
+
 T3 <- function(s){
-  H = metric(REGR, tipAngle)
-  H = as.vector(H)
+  params = s[1:4]
+  scrs   = s[5:7]
   
+  Pc = predictor(REGR, params)
+  Sc = predictor(tipAngle, scrs)
+  p  = as.vector(metric(Pc, Sc))
 }
 
-recipe_T3 = fminsearch(T3, runif(7), minimize = FALSE, maxiter = 100)
-pp = recipe_T3$xmin
-optJ = pp[1:4]
+pinit = runif(7)
+topt  = fminsearch(T3, pinit, minimize = FALSE, maxiter = 10000)
+pp    = topt$xmin
+optJ  = pp[1:4]
 optK  = pp[5:7]
 
 # Transform REGR & tipAngle data by the "recipe" from fminsearch()
-optJJ  = predictor(REGR, optJ)
-optKK  = predictor(tipAngle, optK)
+optJJ = predictor(REGR, optJ)
+optKK = predictor(tipAngle, optK)
+copt  = metric(optJJ,optKK)
 
 # Plotting new REGR & tipAngle data to visualize correlation
+ttl  = sprintf("Transformed Tip Angle PCs and REGR Traits Data [corr = %f]", copt)
 data = data.frame(cbind(optJJ, optKK))
 ggplot(data, aes(x = optJJ, y = optKK)) +
   geom_point(aes(y = optKK), colour = "blue") +
   xlab("REGR Trait Data") +
   ylab("Tip Angle PC Scores Data") +
-  ggtitle("Transformed Tip Angle PCs and REGR Traits Data") +
+  ggtitle(ttl) +
   stat_summary(fun.data = mean_cl_normal) + 
   geom_smooth(method = 'lm') +
   theme_bw()
 
+```
+
+
+```{r something-else}
 metric(optJJ, optKK) # -0.04825338
 metric(REGR[,1], tipAngle[,1]) # 0.2065649
 metric(REGR[,4], tipAngle[,1]) # 0.2065649
@@ -335,13 +349,42 @@ ggplot(data_T4, aes(x = x_axis)) +
 
 ```{r testing-using-CCA}
 # Can test if fminsearch went well by finding the true values of alpha and beta using Canonical Correlation Analysis
-## Helpful site: https://stats.idre.ucla.edu/r/dae/canonical-correlation-analysis/
+## Helpful site: https:// stats.idre.ucla.edu/r/dae/canonical-correlation-analysis/
+library("CCA")
+CCA = cc(REGR, tipAngle)
 
-CCA = cc()
+# Maximized coefficients from own code with fminsearch():
+pp
+optJ  = pp[1:4]
+optK  = pp[5:7]
+optJJ = optJ/norm(optJ, type = "2")
+optKK = optK/norm(optK, type = "2")
+
+# Maximized coefficients from CCA()
+CCA$cor
+CCA$scores$xscores[,1]
+CCA$scores$yscores[,1]
+cor(CCA$scores$xscores[,1], CCA$scores$yscores[,1]) # check that correlation matches my cca process' correlation
+cor(CCA$scores$xscores[,2], CCA$scores$yscores[,2]) # this isn't great, so we'll just focus on the 1st column
+
+optA = CCA$xcoef[,1]
+optB = CCA$ycoef[,1]
+optAA = optA/norm(optA, type = "2")
+optBB = optB/norm(optB, type = "2")
+
+
+# 18 Jan 2021
+## Compared optJJ & optKK (my version of CCA) to make sure they match optAA & optBB (R version of CCA)
+## They match! :)
 
 ```
 
 
+```{r tipAngle-sweep}
+# Will start 19 Jan 2021 with Nathan
 
+
+
+```
 
 
