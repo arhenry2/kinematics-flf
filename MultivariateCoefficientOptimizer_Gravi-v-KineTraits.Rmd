@@ -347,7 +347,7 @@ ggplot(data_T4, aes(x = x_axis)) +
   theme_bw()
 ```
 
-```{r testing-using-CCA}
+```{r check-using-R's-CCA}
 # Can test if fminsearch went well by finding the true values of alpha and beta using Canonical Correlation Analysis
 ## Helpful site: https:// stats.idre.ucla.edu/r/dae/canonical-correlation-analysis/
 library("CCA")
@@ -379,9 +379,87 @@ optBB = optB/norm(optB, type = "2")
 
 ```
 
+```{r own-PCA-in-R}
+### Note: This is copied from gravitropismAssay.Rmd on 1-19-2022 so that I can grab the PCA results from the full output of prcomp()
+## Also, if tipAngles doesn't run, go into your Finder and download that file from ~the cloud~
+
+# Load in Candace's tip angle data (for datasets RIL1 and RIL2)
+tipAngles = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv") 
+scores <- prcomp(tipAngles[,c(2:242)], center = TRUE, scale. = FALSE)
+# This matches 
+
+scores
+indexNames = tipAngles$RIL
+n = 3 # was 7 in gravitropismAssay.Rmd
+PCScores_Ashley = matrix(NA, 162, n)
+UU = matrix(NA, 162, 241)
+for (i in 1:n){
+  for (j in 1:162){ # 162 = number of RILs
+    index = which(indexNames == j)
+    PCScores_Ashley[j,i] = mean(scores$x[index,i])
+    UU[j,] = as.numeric(tipAngles[index,c(2:242)] %>% summarise_if(is.numeric, mean))
+  }
+}
+
+RIL = c(1:162)
+PCScores_Ashley = cbind(RIL, PCScores_Ashley)
+
+
+```
 
 ```{r tipAngle-sweep}
-# Will start 19 Jan 2021 with Nathan
+# Started 19 Jan 2021 with Nathan
+newTipAngleData = predictor(as.matrix(tipAngle), optBB)
+
+# estimate the % var explained by solution vector
+var = var(tipAngle[,1]) + var(tipAngle[,2]) + var(tipAngle[,3])
+
+var2 = var(newTipAngleData)
+var2/var
+
+# Conclusion: 20% of variance is explained by the newTipAngleData
+
+# St Dev
+sqrt(var2) # st dev of newTipAngleData
+
+
+
+
+# Now using PCA values from the code chunk above
+tipAngle = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_tipAngle_PCScores.csv")
+tipAngle = t(tipAngle) # Makes this 3 x 162
+tipAngle = tipAngle[,1]
+
+eta = scores$rotation[,1:3] # Eigen vectors from PCA output
+
+tipAngles = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv")
+uta = tipAngles %>% summarise_if(is.numeric, mean)
+uta = t(tipAngles %>% summarise_if(is.numeric, mean))
+uta = uta[2:242,] # avg of all RILs' tip angles at all time points
+
+# Grab one example of a tipangle curve
+tipAngles_Ex = tipAngles %>%
+  group_by(RIL) %>%
+  # select(-Index_RIL, -Index_cam, -Index_middle, -RIL_partName, -RIL_fullName) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) # Added na.rm so that averages didn't calc in the NAs for the mean
+tipAngles_Ex = t(tipAngles)
+tipAngles_Ex = tipAngles_Ex[2:242,]
+
+plot(uta) # plot of averaged tip angle over time
+
+G = predictor(eta, as.numeric(as.vector(tipAngle))) + uta
+plot(G, ylim=c(0, 80))
+plot(uta)
+plot(tipAngles_Ex[,1])
+
+# -65, +65, & one in between those (b/c 65 is about our variance calc'd earlier)
+G_2 = predictor(eta, 65*as.numeric(as.vector(optBB))) + uta
+plot(G_2)
+G_3 = predictor(eta, -65*as.numeric(as.vector(optBB))) + uta
+plot(G_3)
+# add 3 more equidistant points b/w -65 & +65
+G_4
+
 
 
 
