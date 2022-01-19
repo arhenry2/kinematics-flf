@@ -350,7 +350,7 @@ grid.arrange(p9, p10, p11, p12,
 
 ```{r own-PCA-in-R}
 # Load in Candace's tip angle data (for datasets RIL1 and RIL2)
-tipAngles = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL2_GravitropismData_tipAngles.csv") 
+tipAngles = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv") 
 scores <- prcomp(tipAngles[,c(2:242)], center = TRUE, scale. = FALSE)
 # This matches 
 
@@ -369,7 +369,7 @@ for (i in 1:n){
 plot(scores[1,1], Y)
 RIL = c(1:162)
 PCScores_Ashley = cbind(RIL, PCScores_Ashley)
-write.csv(PCScores_Ashley, "~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-12_RIL2PCScores.csv")
+write.csv(PCScores_Ashley, "~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-12_RIL1PCScores.csv")
 
 ```
 
