@@ -37,8 +37,8 @@ metric <- function(mappedList1, mappedList2){
 ```{r predictor-function}
 
 predictor_norm <- function(M, v){
-  # v = v / norm(as.matrix(v))
-  v = v / norm(v)
+  v = v / norm(as.matrix(v))
+  # v = v / norm(v)
   predicted = M%*%v
   return(predicted)
 }
@@ -248,35 +248,34 @@ tipAngle = data.matrix(tipAngle)
 
 # Now try CCA with RIL1 and RIL2 tip angle datasets
 ## Loading in PC scores from RIL1 & RIL2 tip angle datasets
-RIL1TipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_RIL1_tipAngle_PCScores.csv")
-RIL1TipAngles = data.matrix(RIL1TipAngles)
-RIL2TipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_RIL2_tipAngle_PCScores.csv")
-RIL2TipAngles = data.matrix(RIL2TipAngles)
+# RIL1TipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_RIL1_tipAngle_PCScores.csv")
+# RIL1TipAngles = data.matrix(RIL1TipAngles)
+# RIL2TipAngles = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_RIL2_tipAngle_PCScores.csv")
+# RIL2TipAngles = data.matrix(RIL2TipAngles)
 
 T3 <- function(s){
-  # params = s[1:4]
-  # scrs   = s[5:7]
+  params = s[1:4]
+  scrs   = s[5:7]
+  Pc = predictor_norm(REGR, params)
+  Sc = predictor_norm(tipAngle, scrs)
   
-  # Pc = predictor_norm(REGR, params)
-  # Sc = predictor_norm(tipAngle, scrs)
-  
-  params = s[1:3]
-  scrs   = s[4:6]
-  Pc = predictor_norm(RIL1TipAngles, (params))
-  Sc = predictor_norm(RIL2TipAngles, as.numeric(as.vector(scrs)))
+  # params = s[1:3]
+  # scrs   = s[4:6]
+  # Pc = predictor_norm(as.matrix(REGR), as.numeric(as.vector(params)))
+  # Sc = predictor_norm(as.matrix(tipAngles), as.numeric(as.vector(scrs)))
   p  = as.vector(metric(Pc, Sc))
 }
 
-# pinit = runif(7)
-pinit = runif(6)
+pinit = runif(7)
+# pinit = runif(6)
 topt  = fminsearch(T3, pinit, minimize = FALSE, maxiter = 10000)
 pp    = topt$xmin
-optJ  = pp[1:3] # 1:4
-optK  = pp[4:6] # 5:7
+optJ  = pp[1:4] # 1:4
+optK  = pp[5:7] # 5:7
 
 # Transform REGR & tipAngle data by the "recipe" from fminsearch()
-optJJ = predictor_norm(RIL1TipAngles, optJ)
-optKK = predictor_norm(RIL2TipAngles, optK)
+optJJ = predictor_norm(REGR, optJ)
+optKK = predictor_norm(tipAngle, optK)
 copt  = metric(optJJ,optKK) # 64 = correlation b/w RIL1 & RIL2 tip angle datasets with CCA...
 
 # Plotting new REGR & tipAngle data to visualize correlation
@@ -373,7 +372,7 @@ ggplot(data_T4, aes(x = x_axis)) +
 # Can test if fminsearch went well by finding the true values of alpha and beta using Canonical Correlation Analysis
 ## Helpful site: https:// stats.idre.ucla.edu/r/dae/canonical-correlation-analysis/
 CCA = cc(REGR, tipAngle)
-CCA = cc(RIL1TipAngles, RIL2TipAngles)
+# CCA = cc(RIL1TipAngles, RIL2TipAngles)
 # Maximized coefficients from own code with fminsearch():
 pp
 optJ  = pp[1:3] # 1:4
@@ -594,35 +593,50 @@ V2 = V2[1,] # just variance of PC 1
 CCA = cc(S1, S2)
 L1 = CCA$xcoef[,1] # solution vector ("recipe") 1 from CCA 
 L2 = CCA$ycoef[,1] # solution vector ("recipe") 2 from CCA 
-L1_normalized = optA/norm(optA, type = "2") # type 2 = euclidian normalization
-L2_normalized = optB/norm(optB, type = "2") # type 2 = euclidian normalization
+L1_normalized = L1/norm(L1, type = "2") # type 2 = euclidian normalization
+L2_normalized = L2/norm(L2, type = "2") # type 2 = euclidian normalization
+
+S1_normalized = S1 %*% L1_normalized
+S1_sd = sd(S1_normalized)
+S2_normalized = S2 %*% L2_normalized
+S2_sd = sd(S2_normalized)
 ```
 
 ```{r actual-final-sweeps}
 # For Sweeps:
-graph1_upper = U1 + E1*as.vector(L1)*V1
-graph1_mean  = U1 + E1*as.vector(L1)*0
-graph1_lower = U1 - E1*as.vector(L1)*V1
+# graph1_upper = as.vector(U1) + as.matrix(E1) %*% as.vector(L1) * as.vector(V1[1])
+# graph1_mean  = U1 + E1*as.vector(L1)*0
+# graph1_lower = U1 - E1*as.vector(L1)*V1
+
+graph1_upper = as.vector(U1) + as.matrix(E1) %*% as.vector(L1_normalized) * as.vector(S1_sd) # with correct variance & normalized L1
+graph1_mean = as.vector(U1) + as.matrix(E1) %*% as.vector(L1_normalized) * 0 # with correct variance & normalized L1
+graph1_lower = as.vector(U1) - as.matrix(E1) %*% as.vector(L1_normalized) * as.vector(S1_sd) # with correct variance & normalized L1
+
 x_axis = c(1:241)
 graph1 = data.frame(cbind(x_axis, graph1_upper[,1], graph1_mean[,1], graph1_lower[,1])) # combine PC1 data to graph
 ggplot(graph1, aes(x = x_axis)) +
-  geom_line(aes(y = V2), colour = "dark blue") +
+  geom_point(aes(y = V2), colour = "dark blue") +
   geom_point(aes(y = V3), colour = "blue") +
-  geom_line(aes(y = V4), colour = "light blue") +
+  geom_point(aes(y = V4), colour = "light blue") +
   xlab("Time (per 2 minutes)") +
   ylab("Tip Angle") +
   ggtitle("RIL1 Dataset Tip Angle Sweeps") +
   theme_bw()
 
-graph2_upper = U2 + E2*as.vector(L2)*V2
-graph2_mean  = U2 + E2*as.vector(L2)*0
-graph2_lower = U2 - E2*as.vector(L2)*V2
+
+# graph2_upper = U2 + E2*as.vector(L2)*V2
+# graph2_mean  = U2 + E2*as.vector(L2)*0
+# graph2_lower = U2 - E2*as.vector(L2)*V2
+graph2_upper = as.vector(U2) + as.matrix(E2) %*% as.vector(L2_normalized) * as.vector(S2_sd) # with correct variance & normalized L1
+graph2_mean = as.vector(U2) + as.matrix(E2) %*% as.vector(L2_normalized) * 0 # with correct variance & normalized L1
+graph2_lower = as.vector(U2) - as.matrix(E2) %*% as.vector(L2_normalized) * as.vector(S2_sd) # with correct variance & normalized L1
+
 x_axis = c(1:241)
-graph2 = data.frame(cbind(x_axis, graph2_upper[,1], graph2_mean[,1], graph2_lower[,1])) # combine PC1 data to graph
+graph2 = data.frame(cbind(x_axis, graph2_upper, graph2_mean, graph2_lower)) # combine PC1 data to graph
 ggplot(graph2, aes(x = x_axis)) +
-  geom_line(aes(y = V2), colour = "dark blue") +
-  geom_line(aes(y = V3), colour = "blue") +
-  geom_line(aes(y = V4), colour = "light blue")  +
+  geom_point(aes(y = V2), colour = "dark blue") +
+  geom_point(aes(y = V3), colour = "blue") +
+  geom_point(aes(y = V4), colour = "light blue")  +
   xlab("Time (per 2 minutes)") +
   ylab("Tip Angle") +
   ggtitle("RIL2 Dataset Tip Angle Sweeps") +
@@ -646,6 +660,142 @@ ggplot(data, aes(x = x_axis)) +
   ggtitle("Comparing estimate vs true trial (Black = estimate, Red = trial of RIL1)") +
   theme_bw()
 
+```
+
+
+```{r tip-angle-sweeps-REGR-RIL1TipAngles}
+# To match code from Nathan's email (above), I'm going to use this code block to paste various copied code from above
+
+# Loading in datasets/materials
+X1 = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_02_08_AllRILS_growthCurveDescriptors.csv") # dataset 1
+X2 = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/RIL1_GravitropismData_tipAngles.csv") # dataset 2
+
+# Average tip angles by RIL before grabbing a trial from the datasets
+X1_RILavg = X1 %>%
+  group_by(RILs) %>%
+  summarise_each(funs(mean(., na.rm = TRUE)))
+X2_RILavg = X2 %>%
+  group_by(RIL) %>%
+  summarise_each(funs(mean(., na.rm = TRUE)))
+X1_x = t(X1_RILavg[1,2:5]) # xth trial from dataset 1
+X2_x = t(X2_RILavg[1,2:242]) # xth trial from dataset 2
+
+# Eigenvectors/rotations for each dataset
+X1_scores <- prcomp(X1[,c(2:5)], center = TRUE, scale. = FALSE) # PCA of X1 dataset
+X2_scores <- prcomp(X2[,c(2:242)], center = TRUE, scale. = FALSE) # PCA of X2 dataset
+E1 = X1_scores$rotation[,1:3] # Eigenvectors/rotations for dataset 1
+E2 = X2_scores$rotation[,1:3] # Eigenvectors/rotations for dataset 2
+
+# Average tip angles for each dataset
+U1 = t(X1 %>% summarise_if(is.numeric, mean))
+U1 = U1[2:5,] # avg of all RILs' tip angles at all time points
+U2 = t(X2 %>% summarise_if(is.numeric, mean))
+U2 = U2[2:242,] # avg of all RILs' tip angles at all time points
+
+# PC Scores for each dataset
+# S1 = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_RIL1_tipAngle_PCScores.csv")
+# S1 = data.matrix(S1)
+# S2 = read_csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021-11-30_RIL1_tipAngle_PCScores.csv")
+# S2 = data.matrix(S2)
+
+# PC Scores for RIL1 Tip Angle dataset (REGR dataset not needed)
+S1_PCScores_all = X1_scores$x
+S1_PCScores_allwRILs = data.frame(cbind(X1$RILs, S1_PCScores_all))
+S1_mean = S1_PCScores_allwRILs %>%
+  group_by(V1) %>%
+  summarise_each(funs(mean(., na.rm = TRUE)))
+# need to add rows 89 & 5 b/c no data for them (same for 115?)
+write.csv(S1_mean, "~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2022-01-26_REGR_PCScores.csv") # add in rows with NAs
+S1 = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2022-01-26_REGR_PCScores.csv")
+S1 = S1[,2:5]
+
+S2_PCScores_all = X2_scores$x
+S2_PCScores_allwRILs = data.frame(cbind(X2$RIL, S2_PCScores_all))
+S2_mean = S2_PCScores_allwRILs %>%
+  group_by(V1) %>%
+  summarise_each(funs(mean(., na.rm = TRUE)))
+S2 = S2_mean[,2:4]
+
+
+S1_x = S1[,1] # xth score from dataset 1
+S2_x = S2[,1] # xth score from dataset 2
+
+# Variance of each dataset's PC Scores
+V1 = var(S1) # variance of dataset 1's PC scores
+V2 = var(S2) # variance of dataset 2's PC scores
+V1 = V1[1,] # just variance of PC 1
+V2 = V2[1,] # just variance of PC 1
+
+
+T3 <- function(s){
+  params = s[1:4]
+  scrs   = s[5:7]
+  # Pc = predictor_norm(as.matrix(S1), as.vector(as.numeric(params)))
+  # Sc = predictor_norm(as.matrix(S2), as.vector(as.numeric(scrs)))
+  
+  Pc = predictor_norm(as.matrix(S1), as.vector(params))
+  Sc = predictor_norm(as.matrix(S2), as.vector(scrs))
+  
+  # params = s[1:3]
+  # scrs   = s[4:6]
+  # Pc = predictor_norm(as.matrix(REGR), as.numeric(as.vector(params)))
+  # Sc = predictor_norm(as.matrix(tipAngles), as.numeric(as.vector(scrs)))
+  p  = as.vector(metric(Pc, Sc))
+}
+
+pinit = runif(7)
+topt  = fminsearch(T3, pinit, minimize = FALSE, maxiter = 10000)
+pp    = topt$xmin
+optJ  = pp[1:4]
+optK  = pp[5:7]
+optJ_normalized = optJ/norm(optJ, type = "2")
+optK_normalized = optK/norm(optK, type = "2")
+
+K2_normalized = as.matrix(S2) %*% optK_normalized
+K2_sd = sd(K2_normalized)
+```
+
+```{r actual-final-sweeps}
+# For Sweeps:
+# graph1_upper = as.vector(U1) + as.matrix(E1) %*% as.vector(L1) * as.vector(V1[1])
+# graph1_mean  = U1 + E1*as.vector(L1)*0
+# graph1_lower = U1 - E1*as.vector(L1)*V1
+
+graph1_upper = as.vector(U2) + as.matrix(E2) %*% as.vector(optK_normalized) * as.vector(K2_sd) # with correct variance & normalized L1
+graph1_mean = as.vector(U2) + as.matrix(E2) %*% as.vector(optK_normalized) * 0 # with correct variance & normalized L1
+graph1_lower = as.vector(U2) - as.matrix(E2) %*% as.vector(optK_normalized) * as.vector(K2_sd) # with correct variance & normalized L1
+
+x_axis = c(1:241)
+graph1 = data.frame(cbind(x_axis, graph1_upper[,1], graph1_mean[,1], graph1_lower[,1])) # combine PC1 data to graph
+ggplot(graph1, aes(x = x_axis)) +
+  geom_point(aes(y = V2), colour = "dark blue") +
+  geom_point(aes(y = V3), colour = "blue") +
+  geom_point(aes(y = V4), colour = "light blue") +
+  xlab("Time (per 2 minutes)") +
+  ylab("Tip Angle") +
+  ggtitle("RIL1 Dataset Tip Angle Sweeps w/ REGR Data") +
+  theme_bw()
+
+
+
+# You could do some tests...like:
+Y1_x = E1*as.vector(S1_x) + as.vector(U1)
+# where Y1_x is the estimate of X1_x.
+# Plot Y1_x and X1_x to see how they look.
+plot(Y1_x[,1], X1_x)
+data = data.frame(cbind(x_axis, Y1_x, X1_x))
+ggplot(data, aes(x = x_axis)) +
+  geom_line(aes(y = X1_x), colour = "red") + 
+  geom_point(aes(y = Y1_x[,1])) +
+  # geom_point(aes(y = Y1_x[,2])) +
+  # geom_point(aes(y = Y1_x[,3])) +
+  xlab("Time (per 2 minutes)") +
+  ylab("Tip Angle") +
+  ggtitle("Comparing estimate vs true trial (Black = estimate, Red = trial of RIL1)") +
+  theme_bw()
+
+# REGR data, Tip Angle 1, & TipAngle 2 and put them on the network drive
+## including PC scores
 ```
 
 
