@@ -42,13 +42,13 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
 ## Perform genome scan by Haley-Knott regression
 # Output of scan1() is matrix of LOD scores, positions x phenotypes
 # Selecting phenotype columns & make sure to indicate the same columns in scan1perm() below
-  out <- scan1(pr, CT$pheno[,c(1:4)], k_loco, cores = 4) ## Note: (1:4) for REGR Curve Descriptors, (1,2,8,9) for parameters
+  out <- scan1(pr, CT$pheno[,c(1,2,4,5)], k_loco, cores = 4) ## Note: (1:4) for REGR Curve Descriptors, (1,2,8,9) for parameters
 
   
   summary(out)
-  nperm = 10000
+  nperm = 1000
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1:4)], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2,4,5)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = nperm, perm_Xsp = FALSE, # changed n_perm=10000 from 1000 (5.9.2021)
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
@@ -80,7 +80,7 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
   
 ##### QTL Mapping Plots:
   ymx <- maxlod(out)
-  plot(out, map, lodcolumn = 1, ylim=c(0, ymx*1.02), col = rgb(0, 0, 0, 0.5), main = "") # black
+  plot(out, map, lodcolumn = 1, ylim = c(0, ymx*1.02), col = rgb(0, 0, 0, 0.5), main = "") # black
   plot(out, map, lodcolumn = 2, col = rgb(1, 0, 0, 0.5), add = TRUE) # red
   plot(out, map, lodcolumn = 3, col = rgb(1, 0.4, 0, 0.5), add = TRUE) # orange
   plot(out, map, lodcolumn = 4, col = rgb(0, 0.6, 1, 0.5), add = TRUE) # light blue
@@ -107,13 +107,45 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
                  rgb(0, 0.6, 1, 0.5)), # light blue
                  # rgb(0, 1, 0, 0.5), # green
                  # rgb(0, 0, 0.8, 0.5), # dark blue
-                 # # rgb(0.4, 0, 0.6, 0.5), # violet
+                 # rgb(0.4, 0, 0.6, 0.5), # violet
                  # rgb(0, 0, 0, 0.3)), # grey
          colnames(out), bty = "n")
 
 # plot(out, map[peaks[2,3]], lodcolumn = 2, xlim = c(peaks[2,6],peaks[2,7]),
                                       # ylim = c(0,7), main = paste0(colnames(out)[2]))
 dev.off()
+
+#####################################################################################################
+# Create file with zeros and ones to show confidence intervals that are significant for each trait
+## Added 2022-02-08 with Dr. Nathan Miller
+#####################################################################################################
+# if LOD > sig[,#], then add 1
+# if LOD < sig[,#], then add 0
+
+
+
+# make a matrix to put ones and zeros:
+ohYeah = matrix(out, nrow = nrow(out), ncol = ncol(out))
+
+for (i in 1:length(sig)){
+    for (j in 1:dim(out)[1]){
+  
+    if(out[j,i] >= sig[i]){
+      # if that value is sig, add "one" in the matrix
+      ohYeah[j,i] = 1
+    } else {
+      # if that value isn't sig, add "zero" in the matrix
+      ohYeah[j,i] = 0
+    }  
+  }
+}
+# Change column names so you know what's what
+colnames(ohYeah) = colnames(out)
+
+
+
+
+
 
 
 #####################################################################################################
