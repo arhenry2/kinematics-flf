@@ -197,7 +197,7 @@ for (i in 1:length(res)){
 # save(growthCurveDescriptors, file = "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors.csv")
 # write_csv(growthCurveDescriptors, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors_pos-to-3000.csv")
 
-write_csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021-12-06_growthCurveDescriptors.csv")
+write_csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2022-04-20_growthCurveDescriptors.csv")
 ```
 
 ```{r clean-up-data}
@@ -213,7 +213,6 @@ growthCurveDescriptors$RILs <- growthCurveDescriptors$filename
 growthCurveDescriptors$RILs <- str_extract(growthCurveDescriptors$RILs, "[A-Z]+[0-9]+")
 growthCurveDescriptors$RILs = str_extract(growthCurveDescriptors$RILs, "[0-9]+")
 
-
 # Now for Auxin Transport Mutants
 growthCurveDescriptors$mutants <- growthCurveDescriptors$filename
 growthCurveDescriptors$mutants <- str_split(growthCurveDescriptors$mutants, '_', simplify = TRUE)[,1] #only takes name before underscore
@@ -225,12 +224,12 @@ growthCurveDescriptors = growthCurveDescriptors %>%
 
 # Write data to csv
 # write.csv(growthCurveDescriptors, "~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
-write.csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_growthCurveDescriptors-wAlleles.csv")
+write.csv(growthCurveDescriptors, "~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2022_04_20_growthCurveDescriptors-wAlleles.csv")
 ```
 
 ```{r distributions-of-growth-curve-descriptors}
 # data = read.csv("~/rildata/rildata_realfullDataset/2021_02_08_growthCurveDescriptors-removedNoMatZoneRoots.csv")
-data = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_growthCurveDescriptors-wAlleles.csv")
+data = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2022_04_20_growthCurveDescriptors-wAlleles.csv")
 
 # Density plots to see distribution of each REGR curve descriptor:
 ## maxREGR: very Normally distributed!
@@ -269,7 +268,7 @@ shapiro.test(data$growthZoneWidth) # W = 0.99086, p-value = 0.9689 -> doesn't pa
 ```
 
 ```{r ttests-for-descriptors}
-AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2021_12_06_growthCurveDescriptors-wAlleles.csv")
+AllRILs_SummaryParameters = read.csv("~/Desktop/AuxinTransportMutants/2020-21_Data/IAAMutants_ProcessedData-wAlleles/2022_04_20_growthCurveDescriptors-wAlleles.csv")
 
 # abcb19
 abcb19 = AllRILs_SummaryParameters %>%
@@ -424,7 +423,7 @@ write.csv(growthCurveDescriptors_nSamples, "~/rildata/rildata_fullDataset/2021_0
 growthCurveDescriptors = read.csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_02_08_growthCurveDescriptors_Averaged-removedNoMatZoneRoots-nopercentMatZone.csv")
 
 # Plot positionMaxREGR vs growthZoneWidth to see if they're two separate variables
-## Answer: directly correlated, they're the same variable... dammit
+## Answer: directly correlated??
 ggplot(data = growthCurveDescriptors, aes(x = growthZoneWidth)) +
   geom_point(aes(y = positionMaxREGR)) +
   ggtitle("MaxREGR Position vs Width of Growth Zone") +

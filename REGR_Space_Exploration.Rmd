@@ -1,0 +1,87 @@
+---
+title: "REGR Space Exploration"
+author: "Ashley Henry"
+date: "2/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+library(pracma)
+library(data.table)
+library(qtl2)
+library(CCA)
+```
+
+
+```{r linearReg}
+data = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_02_08_AllRILS_growthCurveDescriptors.csv")
+
+lm(data$maxREGR ~ data$growthZoneWidth)
+plot(data$maxREGR, data$growthZoneWidth)
+
+uffda = lm(overallGrowthRate ~ maxREGR + growthZoneWidth, data = data)
+summary(uffda)
+
+predictedGrowthRate = data$maxREGR*uffda$coefficients[2] + data$growthZoneWidth*uffda$coefficients[3]
+plot(data$overallGrowthRate, predictedGrowthRate)
+
+predictedGrowthRate = cbind(data$RILs, predictedGrowthRate)
+colnames(predictedGrowthRate) <- c("RILs","predictedGrowthRate")
+
+predictedGrowthRate = data.frame(predictedGrowthRate)
+predictedGrowthRate = predictedGrowthRate %>%
+  group_by(RILs) %>%
+  summarise_each(funs(mean(., na.rm = TRUE)))
+
+write.csv(predictedGrowthRate, "~/Desktop/2022-02-03_predGRfromWidth-maxREGR.csv")
+
+data2 = read.csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2022-02-03_RIL1-2_Kine_growthRates.csv")
+
+```
+
+```{r To-Do-List}
+# QTL maps to make 
+## X - 1. predictedGR, KineGrowthRate, RIL1GR, RIL2GR, RIL1-2Avg, yat.csv (2nd column)
+## X - 2. maxREGR, width, predictedGR
+
+# There are multiple ways to measure growth rate:
+# Put these 2 together - done
+## X - predictedGR from maxREGR & width
+## X - overallGR (from kineTraits)
+
+# Do the following all separaete & combine then by changing opacity in powerpoint:
+## RIL1 GR
+## RIL2 GR
+## RIL1 & RIL2 avg GR
+
+# Plot this on its own:
+## not_growthRate
+
+# Plot - done
+## X - New traits for REGR traits from CCA recipe
+## X - New traits for tip angles from CCA recipe
+
+# Plot - done
+## X - Map 1st PC scores of REGR (should be same as above plot)
+
+# Plot
+## Map 5 time slices of Candace's tip angles
+## Do any of her peaks match the other peaks from all the above qtl maps
+
+```
+
+
+
+
+
+
+
+

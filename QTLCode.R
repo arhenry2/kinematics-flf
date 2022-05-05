@@ -42,17 +42,17 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
 ## Perform genome scan by Haley-Knott regression
 # Output of scan1() is matrix of LOD scores, positions x phenotypes
 # Selecting phenotype columns & make sure to indicate the same columns in scan1perm() below
-  out <- scan1(pr, CT$pheno[,c(1,2,4,5)], k_loco, cores = 4) ## Note: (1:4) for REGR Curve Descriptors, (1,2,8,9) for parameters
+  out <- scan1(pr, CT$pheno[,c(1:4)], k_loco, cores = 4) ## Note: (1:4) for REGR Curve Descriptors, (1,2,8,9) for parameters
 
-  
   summary(out)
-  nperm = 1000
+  nperm = 10000
 # Permutation testing
-  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1,2,4,5)], k_loco[1:5], addcovar = NULL,
+  operm <- scan1perm(pr[,1:5], CT$pheno[,c(1:4)], k_loco[1:5], addcovar = NULL,
                    Xcovar = NULL, intcovar = NULL, weights = NULL, reml = TRUE,
                    model = "normal", n_perm = nperm, perm_Xsp = FALSE, # changed n_perm=10000 from 1000 (5.9.2021)
                    perm_strata = NULL, chr_lengths = NULL, cores = 4)
 
+  # summary(operm)
   # sig <- summary(operm, alpha = c(0.05, 0.01)) # Significant threshold, 95% & 99%  
   sig <- summary(operm, alpha = c(0.05)) # Significant threshold, just 95%
 
@@ -69,13 +69,57 @@ setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
   ## Saw this on Broman's website: https://kbroman.org/qtl2/assets/vignettes/user_guide.html#Finding_LOD_peaks,
   ### He says to use this with caution... BUT WHY?? WHAT IS BAYES?! WHAT IS PEAKDROP?!
   # Please Note: you have to change lodcolumn & chr manually to find the right peaks
-  lod_int(out, map, lodcolumn = 4, chr = 4, peakdrop = 1.8, drop = 1.5) # Also works on lodcolumn = 2 (vf)
+  lod_int(out, map, lodcolumn = 2, chr = 4, peakdrop = 1.8, drop = 1.5) # Also works on lodcolumn = 2 (vf)
 
   ## Use this if want to normalize traits to have same threshold at 1! (added 4-19-2021)
   # for loop to divide each trait's data by that trait's sig value at 95%
   # Note: ONLY DO THIS ONCE! or it'll keep changing 'out'
   # for (i in 1:dim(out[,])[2]){
   #   out[,i] = out[,i]/sig[,i]
+  # }
+  
+  
+  # Trying out Interaction from Broman's FAQ page
+  ## 7 March 2022
+  # data(hyper)
+  # hyper <- calc.genoprob(hyper, step=2.5, err=0.001)
+  # pr <- calc.genoprob(CT, step = 2.5, err = 0.002)
+  # 
+  # 
+  # qtl <- makeqtl(hyper, chr=15, pos=18, what="prob")
+  # 
+  # out.i <- addqtl(hyper, qtl=qtl, formula=y~Q1*Q2, method="hk")
+  # out.a <- addqtl(hyper, qtl=qtl, formula=y~Q1+Q2, method="hk")
+  # plot(out.i - out.a)
+  # 
+  # out2 <- scantwo(hyper, verbose=FALSE)
+  # out3 <- scantwo(pr, CT$pheno[,c(5:8)], k_loco)
+  # plot(out2, chr=c(1,4,6,7,15)) # pg. 217 of Broman's R/qtl manual
+  # plot(out2, chr=c(1,4,6,7,15), lower="cond-int") # cleans up the plot to highlight pairs of QTL
+  # plot(out2, chr=1, lower="cond-int", upper="cond-add")
+  # 
+  # # Trying it out on my data:
+  # library(qtl)
+  # CT_new <- read.cross("csvs", dir="~/Desktop/Mydata", genfile="ALFP_geno.csv",
+  #                      phefile="2022-02-07_predGRfromWidth-maxREGR.csv", mapfile="ALFP_gmap.csv")
+  # pr <- calc.genoprob(CT_new, map, step=2.5, err=0.001)
+  # qtl <- makeqtl(CT, chr = 3, pos=2.613844, what="prob")
+  # out.i <- addqtl(CT, qtl = qtl, formula=y~Q1*Q2, method="hk")
+  # out.a <- addqtl(CT, qtl = qtl, formula=y~Q1+Q2, method="hk")
+  # plot(out.i - out.a)
+  
+  
+# Broman's for loop for plotting LOD scores
+# Transform these with your data to easier plotting!)
+  # color <- c("slateblue", "violetred", "green3")
+  # par(mar=c(4.1, 4.1, 1.6, 1.1))
+  # ymx <- max(maxlod(out), maxlod(out_pg), maxlod(out_pg_loco))
+  # for(i in 1:2) {
+  #   plot(out, map, lodcolumn=i, col=color[1], main=colnames(iron$pheno)[i],
+  #        ylim=c(0, ymx*1.02))
+  #   plot(out_pg, map, lodcolumn=i, col=color[2], add=TRUE)
+  #   plot(out_pg_loco, map, lodcolumn=i, col=color[3], add=TRUE, lty=2)
+  #   legend("topleft", lwd=2, col=color, c("H-K", "LMM", "LOCO"), bg="gray90", lty=c(1,1,2))
   # }
   
 ##### QTL Mapping Plots:
@@ -118,11 +162,8 @@ dev.off()
 #####################################################################################################
 # Create file with zeros and ones to show confidence intervals that are significant for each trait
 ## Added 2022-02-08 with Dr. Nathan Miller
-#####################################################################################################
 # if LOD > sig[,#], then add 1
 # if LOD < sig[,#], then add 0
-
-
 
 # make a matrix to put ones and zeros:
 ohYeah = matrix(out, nrow = nrow(out), ncol = ncol(out))
@@ -142,11 +183,17 @@ for (i in 1:length(sig)){
 # Change column names so you know what's what
 colnames(ohYeah) = colnames(out)
 
+write.csv(ohYeah, "~/Desktop/2022-02-14_sigPeaks_basis.csv")
 
-
-
-
-
+#####################################################################################################
+# Ashley creating csv file from "out" & "map"
+out
+map[1] # = chr1, etc. through chr 5
+markerPositions = unlist(cbind(map[1], map[2], map[3], map[4], map[5]))
+markerPositions = data.frame(markerPositions)
+out = data.frame(out)
+cm_Positions = cbind(markerPositions, out)
+write.csv(cm_Positions, "~/Desktop/2022-02-14_cMPositions_FINAL.csv")
 
 #####################################################################################################
 # Load in geno data & see Landsberg erecta occurrences & pick all lines w/ Ler at Marker 1
@@ -165,18 +212,20 @@ colnames(ohYeah) = colnames(out)
 # lod columns: 1:maxREGR, 2:vf, 3:positionMaxREGR, 4:growthZoneWidth
 # This is a matrix, how can I add chr & phenotype to this & add to 'peaks' dataframe?
 ## Added this^ manually to peak data: 2021-05-09_peaks.xlsx
-lod_int(out, map, lodcolumn = 3, chr = 1, peakdrop = 1.8, drop = 1.5)
+lod_int(out, map, lodcolumn = 4, chr = 1, peakdrop = 1.8, drop = 1.5) 
+# for kinematic traits: lodcolumn = 2 & 4 for chr = 1
 
 # maxmarg() grabs allele data by RIL at a specific marker location (given chromosome & position)
-g <- maxmarg(pr, map, chr = 5, pos = 28.45, return_char = TRUE, minprob = 0)
+g <- maxmarg(pr, map, chr = 5, pos = 76.680571, return_char = TRUE, minprob = 0)
 # Plots the phenotypes and genotype at a marker location
 ## bgcolor = 0 changes background color to white
-plot_pxg(g, CT$pheno[,"posMaxREGR"], ylab = "Position of Max REGR", SEmult = 2, bgcolor = 0) + # add bgcolor = 0 if you want a b/w background
-  title(main = "Chr 5, Pos 28.45 cM") # Change manually so that pos & chr match above
-  
+plot_pxg(g, CT$pheno[,"overallGrowthRate"], ylab = "Growth Rate", SEmult = 2, bgcolor = 0) + # add bgcolor = 0 if you want a b/w background
+  title(main = "Chr 5, Pos 76.6 cM") # Change manually so that pos & chr match above
+
 
 #####################################################################################################
-# Ashley doing her own thing here, no need to looksee... [ 9 May 2021 ]
+#################################### PERCENT VARIANCE EXPLAINED #####################################
+#####################################################################################################
 ## Goal: combine all "g" lists into a dataframe (with labelled column name) for each marker
 ## Have another dataframe with phenotypes (CT$pheno)
 ## Create separate dataframes from g combo so that RILs w/ LL & that pheno are in separate columns from RILs with CC & pheno
@@ -192,13 +241,13 @@ plot_pxg(g, CT$pheno[,"posMaxREGR"], ylab = "Position of Max REGR", SEmult = 2, 
 ## pheno = dataframe of all phenotypes by RIL from CT$pheno (matrix)
 library(tidyverse)
 library(dplyr)
-peakLocations = read_csv("~/Desktop/QTL_Maps/PeaksData/2021-05-09_peaks.csv")
+peakLocations = read.csv("~/Desktop/QTL_Maps/PeaksData/2021-05-09_peaks.csv")
 
 g <- maxmarg(pr, map, chr = 1, pos = 21.509791, return_char = TRUE, minprob = 0)
 
 pheno = data.frame(CT$pheno)
 
-# For loop to combine all allele data for each RIL at the peak marker locations
+# For loop to combine all allele data for each RIL at the peak marker location
 geno = data.frame(1:162) # create empty dataframe
 for (i in 1:nrow(peakLocations)) {
   print(peakLocations$lodcolumn[i])
@@ -210,46 +259,53 @@ for (i in 1:nrow(peakLocations)) {
 
 # Saved this work
 ## Manually made column names with marker chr & pos b/c couldn't figure that out here
-# write.csv(geno, "~/Desktop/2021-05-09_allelesAtAllPeaks.csv")
+# write.csv(geno, "~/Desktop/QTL_Maps/PeaksData/2021-05-09_allelesAtAllPeaks.csv")
 
 # Re-read in the geno file (with manually fixed column names!)
-geno = read_csv("~/Desktop/QTL_Maps/PeaksData/2021-05-09_allelesAtAllPeaks.csv")
+geno = read_csv("~/Desktop/QTL_Maps/PeaksData/2021-05-09_allelesAtAllPeaks.csv", rownames_included = FALSE)
 
 # Make dataframe with marker allele data & phenotype, by RIL
-## Starting with positionVmax at Chr 1, Pos 21.5 peak
+## Starting with growthRate at Chr 1, Pos 21.5 peak
 data = cbind(geno, pheno)
 peaks = colnames(data)
 ##########################################################################################
-# The following is for posVmax only [5-14-2021]
+# The following is for one peak at a time only [5-14-2021]
 ## Need a for loop (or function) to do this for the others
 
+# Workshopping for loop
+# column = "column name"
+# trait = "trait name"
+
 # Gather posVmax data for the RILs with CC allele at chosen marker
-growthZoneWidth_CCdata  = data %>%
-  select(RIL, chr4_pos53.20634_growthZoneWidth, growthZoneWidth) %>%
-  filter(chr4_pos53.20634_growthZoneWidth == "CC")
+growthRate_CCdata  = data %>%
+  select(RIL, chr1_pos21.50979133_growthRate, overallGrowthRate) %>%
+  filter(chr1_pos21.50979133_growthRate == "CC")
 # Gather posVmax data for the RILs with LL allele at chosen marker
-growthZoneWidth_LLdata  = data %>%
-  select(RIL, chr4_pos53.20634_growthZoneWidth, growthZoneWidth) %>%
-  filter(chr4_pos53.20634_growthZoneWidth == "LL")
+growthRate_LLdata  = data %>%
+  select(RIL, chr1_pos21.50979133_growthRate, overallGrowthRate) %>%
+  filter(chr1_pos21.50979133_growthRate == "LL")
 
 # Calc means & var for posVmax for each allele
-avgCC = mean(growthZoneWidth_CCdata$growthZoneWidth, na.rm = TRUE) # avg = 665.0547
-avgLL = mean(growthZoneWidth_LLdata$growthZoneWidth, na.rm = TRUE) # avg = 594.3407
+avgCC = mean(growthRate_CCdata$overallGrowthRate, na.rm = TRUE) # avg = 665.0547
+avgLL = mean(growthRate_LLdata$overallGrowthRate, na.rm = TRUE) # avg = 594.3407
 avgDiff = avgCC-avgLL # Think about whether you need absolute value here...
 # avgDiff = avgLL-avgCC # Use if LL data is higher than CC data!
 print(avgDiff)
-var_growthZoneWidth = var(data$growthZoneWidth, y = NULL, na.rm = TRUE) # var = 6284.778
+var_overallGrowthRate = var(data$overallGrowthRate, y = NULL, na.rm = TRUE) # var = 6284.778
 
 
 # Use avgDiff to subtract that much from higher allele to get same population group
-adj_growthZoneWidth_LLdata = growthZoneWidth_LLdata %>%
-  mutate(adj_growthZoneWidth = growthZoneWidth + avgDiff) # Plus or minus? PAY ATTENTION!!! 
+adj_growthRate_LLdata = growthRate_LLdata %>%
+  mutate(adj_growthRate = overallGrowthRate + avgDiff) # Plus or minus? PAY ATTENTION!!! 
 
 # Now need to add adjusted Vmax of LL to CC & make new posVmax column to calc var from
-adjusted_growthZoneWidth = combine(adj_growthZoneWidth_LLdata$adj_growthZoneWidth, growthZoneWidth_CCdata$growthZoneWidth)
+# adjusted_overallGrowthRate = combine(adj_overallGrowthRate_LLdata$adj_overallGrowthRate, overallGrowthRate_CCdata$overallGrowthRate)
+adjusted_overallGrowthRate = append(adj_growthRate_LLdata$adj_growthRate, growthRate_CCdata$overallGrowthRate)
 
-adj_var_growthZoneWidth = var(adjusted_growthZoneWidth, y = NULL, na.rm = TRUE) # var = 5057.851
-percentVarianceExplained = 1-(adj_var_growthZoneWidth/var_growthZoneWidth) # perVarExplained = 0.1952219
+
+
+adj_var_overallGrowthRate = var(adjusted_overallGrowthRate, y = NULL, na.rm = TRUE) # var = 5057.851
+percentVarianceExplained = 1-(adj_var_overallGrowthRate/var_overallGrowthRate) # perVarExplained = 0.1952219
 ##########################################################################################
 
 
@@ -266,15 +322,15 @@ var_growthZoneWidth = var(pheno$growthZoneWidth, y = NULL, na.rm = TRUE) # var =
 
 
 #####################################################################################################
-##### Allele effect #####
+##### Allele effect (Estimated QTL Effect) #####
 # scan1coef() - This function takes a single phenotype and the genotype probabilities 
 ##              for a single chromosome and returns a matrix with the estimated  
 ##              coefficients at each putative QTL location along the chromosome.
 # (pr = 1) = chr 1
-Aeff <- scan1coef(pr[,"4"], CT$pheno[,"positionVmax"])
+Aeff <- scan1coef(pr[,"4"], CT$pheno[,"growthZoneWidth"])
 par(mar = c(4.1, 4.1, 1.1, 2.6), las = 1)
 col <- c("slateblue", "violetred", "green3")
-# map["2"] means chr 2
+# map["2"] means chr 2, columns = 1:3 b/c 3 columns in Aeff (L, C, and intercept)
 plot(Aeff, map["4"], columns = 1:3, col = col)
 last_coef <- unclass(Aeff)[nrow(Aeff),] # pull out last coefficients
 for(i in seq(along = last_coef))

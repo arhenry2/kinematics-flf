@@ -1,0 +1,73 @@
+---
+title: "KinematicTraitCorrelation.Rmd"
+author: "Ashley Henry"
+date: "2/18/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(plotly)
+library(tidyverse)
+library(readr)
+library(rowr)
+require(reshape2)
+library(dplyr)
+```
+
+```{r load-data}
+kinematicTraits_avg = read.csv("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/2021_04_18_growthCurveDescriptors_Averaged-FINAL.csv")
+
+kinematicTraits_all = read.csv("~/Desktop/GravitropismAssay/TipAngle-Parameters-KinematicTraits_Data/2021_02_08_AllRILS_growthCurveDescriptors.csv")
+
+
+```
+
+
+
+```{r plots}
+metric <- function(mappedList1, mappedList2){
+  # Does correlation
+  correlation = cor(mappedList1, mappedList2, use = "complete.obs")
+  return(correlation)
+}
+
+# Plots for ALL kinematic traits
+genotype1 = kinematicTraits_all$maxREGR
+genotype2 = kinematicTraits_all$posMaxREGR
+copt  = metric(genotype1, genotype2)
+ttl  = sprintf("Correlation between All Kinematic Traits = %f", copt)
+
+ggplot(data = kinematicTraits_all, aes(x = genotype1, y = genotype2)) + 
+  geom_point(aes(y = genotype2)) +
+  stat_summary(fun.data = mean_cl_normal) + 
+  geom_smooth(method = 'lm') +
+  ggtitle(ttl) +
+  xlab("maxREGR") +
+  ylab("posMaxREGR") + 
+  theme_bw()
+
+ggsave("~/Desktop/2022-02-18_corr_maxREGR-posMaxREGR.jpeg")
+```
+
+```{r plots}
+# Plots for kinematic traits AVERAGED BY RIL
+genotype1 = kinematicTraits_avg$maxREGR
+genotype2 = kinematicTraits_avg$growthZoneWidth
+copt  = metric(genotype1, genotype2)
+ttl  = sprintf("Correlation between Mean Kinematic Traits = %f", copt)
+
+ggplot(data = kinematicTraits_avg, aes(x = genotype1, y = genotype2)) + 
+  geom_point(aes(y = genotype2)) +
+  stat_summary(fun.data = mean_cl_normal) + 
+  geom_smooth(method = 'lm') +
+  ggtitle(ttl) +
+  xlab("maxREGR") +
+  ylab("growthZoneWidth") + 
+  theme_bw()
+```
+
+
+
+

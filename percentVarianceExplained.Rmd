@@ -1,0 +1,115 @@
+---
+title: "percentVarianceExplained.Rmd"
+author: "Ashley Henry"
+date: "5/4/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(data.table)
+library(qtl2)
+```
+
+```{r load-in-data}
+## Load in data (code is copied from QTLCode.R)
+
+# Folder with all of the input files for this R script
+setwd("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL")
+
+CT <- read_cross2("~/Desktop/QTL_AnalysisMaterials/Ashley_QTL/CvixLer.working.json")
+CT
+
+g1 <- do.call("cbind", CT$geno) 
+# Pseudomarkers improve resolution, but need huge memory; step=0 does nothing
+map <- insert_pseudomarkers(CT$gmap, step = 2.5, stepwidth = "max")
+pr <- calc_genoprob(CT, map, error_prob = 0.002)
+```
+
+```{r DONTUSE-UnlessYouHaveNewGenotypes!}
+peakLocations = read.csv("~/Desktop/QTL_Maps/PeaksData/2021-05-09_peaks.csv")
+
+g <- maxmarg(pr, map, chr = 1, pos = 21.509791, return_char = TRUE, minprob = 0)
+
+pheno = data.frame(CT$pheno)
+
+# For loop to combine all allele data for each RIL at the peak marker location
+geno = data.frame(1:162) # create empty dataframe
+for (i in 1:nrow(peakLocations)) {
+  print(peakLocations$lodcolumn[i])
+  print(peakLocations$chr[i])
+  print(peakLocations$pos_cM[i])
+  g <- maxmarg(pr, map, chr = peakLocations$chr[i], pos = as.double(peakLocations$pos_cM[i]), return_char = TRUE, minprob = 0)
+  geno = cbind(geno, g)
+}
+
+# Saved this work
+## Manually made column names with marker chr & pos b/c couldn't figure that out here...
+write.csv(geno, "~/Desktop/QTL_Maps/PeaksData/2021-05-09_allelesAtAllPeaks.csv")
+# bada bing, bada boom, finalized result here ^
+```
+
+```{r percent-variance-explained}
+# Read in the geno file (with manually fixed column names!)
+geno = read_csv("~/Desktop/QTL_Maps/PeaksData/2021-05-09_allelesAtAllPeaks.csv", rownames_included = FALSE)
+
+# Make dataframe with marker allele data & phenotype, by RIL
+## Starting with growthRate at Chr 1, Pos 21.5 peak
+data = cbind(geno, pheno)
+peaks = colnames(data)
+
+##########################################################################################
+# The following is for one peak at a time only [orig: 5-14-2021, edited: 5-5-2022]
+
+# Define standing trait & peak column for finding % var explained
+trait = "overallGrowthRate"
+trait_data = data$overallGrowthRate
+peak = "chr5_pos76.680571_growthRate"
+peak_data = data$chr5_pos76.680571_growthRate
+
+# Gather trait data for the RILs with CC allele at chosen marker
+trait_CCdata = data %>%
+  select(RIL, peak, trait) %>%
+  filter(peak_data == "CC")
+# Gather trait data for the RILs with LL allele at chosen marker
+trait_LLdata  = data %>%
+  select(RIL, peak, trait) %>%
+  filter(peak_data == "LL")
+
+# Calc means & var for the trait for each allele
+avgCC = mean(trait_CCdata[,3], na.rm = TRUE)
+avgLL = mean(trait_LLdata[,3], na.rm = TRUE)
+avgDiff = avgCC-avgLL
+print(avgDiff)
+
+var_trait = var(trait_data, y = NULL, na.rm = TRUE) # remember that "trait" here is data$trait!!!
+
+
+# Use avgDiff to subtract that much from higher allele to get same population group
+adj_trait_LLdata = trait_LLdata %>%
+  mutate(adj_trait = trait_LLdata[,3] + avgDiff) # This still works if LLdata > CCdata, b/c adding a neg. value = subtracting!
+
+
+# Now need to combine LL alleled adjusted trait with CC traits, this makes a new column to calc variance from
+adjusted_trait = append(adj_trait_LLdata$adj_trait, trait_CCdata[,3])
+
+
+adj_var_trait = var(adjusted_trait, y = NULL, na.rm = TRUE)
+percentVarianceExplained = 1-(adj_var_trait/var_trait)
+print(percentVarianceExplained)
+
+```
+
+
+
+
+
+
+```{r chceking-something}
+a  <-  matrix(rnorm(12),ncol=4,nrow=3)
+b  <-  1:4
+combine(a,b)
+
+```
